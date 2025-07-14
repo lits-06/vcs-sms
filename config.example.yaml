@@ -1,0 +1,53 @@
+server:
+  port: 8080
+  read_timeout: 30
+  write_timeout: 30
+  idle_timeout: 120
+
+database:
+  host: localhost
+  port: 5432
+  name: server_management
+  user: sms_user
+  password: sms_password
+  ssl_mode: disable
+  max_open_conns: 100
+  max_idle_conns: 10
+  conn_max_lifetime: 3600
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 100
+  min_idle_conns: 10
+
+elasticsearch:
+  url: http://localhost:9200
+  username: ""
+  password: ""
+
+jwt:
+  secret: your-very-secure-secret-key-here
+  expiry: 24h
+
+smtp:
+  host: smtp.gmail.com
+  port: 587
+  username: your-email@gmail.com
+  password: your-app-password
+  from: your-email@gmail.com
+  admin_email: admin@example.com
+
+log_level: info
+log_file: logs/app.log
+monitoring_interval: 60  # seconds
+
+scopes:
+  - server:create
+  - server:read
+  - server:update
+  - server:delete
+  - server:import
+  - server:export

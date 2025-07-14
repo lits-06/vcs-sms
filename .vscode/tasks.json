@@ -1,0 +1,21 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Server Management System",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"build",
+				"-o",
+				"bin/server-management",
+				"cmd/server/main.go"
+			],
+			"group": "build",
+			"problemMatcher": [
+				"$go"
+			],
+			"isBackground": false
+		}
+	]
+}
