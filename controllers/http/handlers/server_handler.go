@@ -5,41 +5,30 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/lits-06/vcs-sms/internal/domain/interfaces"
+	"github.com/lits-06/vcs-sms/internal/usecases"
 	"go.uber.org/zap"
 
 	"VCS-Checkpoint1/internal/domain"
 	"VCS-Checkpoint1/internal/usecase"
-	"VCS-Checkpoint1/pkg/validator"
 )
 
 type ServerHandler struct {
-	serverUsecase usecase.ServerUsecase
-	validator     *validator.Validator
-	logger        *zap.Logger
+	serverUsecase usecases.ServerUsecase
+	logger        interfaces.Logger
 }
 
-func NewServerHandler(serverUsecase usecase.ServerUsecase, validator *validator.Validator, logger *zap.Logger) *ServerHandler {
+func NewServerHandler(serverUsecase usecase.ServerUsecase, logger interfaces.Logger) *ServerHandler {
+	handlerLogger := logger.With("layer", "handlers")
+
 	return &ServerHandler{
 		serverUsecase: serverUsecase,
-		validator:     validator,
-		logger:        logger,
+		logger:        handlerLogger,
 	}
 }
 
-// CreateServer godoc
-// @Summary Create a new server
-// @Description Create a new server with the provided information
-// @Tags servers
-// @Accept json
-// @Produce json
-// @Param server body domain.CreateServerRequest true "Server information"
-// @Success 201 {object} domain.ServerResponse
-// @Failure 400 {object} domain.ErrorResponse
-// @Failure 500 {object} domain.ErrorResponse
-// @Security BearerAuth
-// @Router /servers [post]
 func (h *ServerHandler) CreateServer(c *gin.Context) {
-	var req domain.CreateServerRequest
+	var req usecases.CreateServerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("Failed to bind JSON", zap.Error(err))
 		c.JSON(http.StatusBadRequest, domain.ErrorResponse{

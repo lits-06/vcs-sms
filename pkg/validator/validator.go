@@ -1,34 +1,14 @@
 package validator
 
 import (
-	"reflect"
-	"strings"
-
-	"github.com/go-playground/validator/v10"
+	"github.com/lits-06/vcs-sms/entity"
 )
 
-// Validator wraps the validator instance
-type Validator struct {
-	validator *validator.Validate
-}
-
-// New creates a new validator instance
-func New() *Validator {
-	v := validator.New()
-
-	// Register custom tag name function
-	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
-		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-		if name == "-" {
-			return ""
-		}
-		return name
-	})
-
-	return &Validator{validator: v}
-}
-
-// Validate validates a struct
-func (v *Validator) Validate(i interface{}) error {
-	return v.validator.Struct(i)
+type Validator interface {
+	ValidateServer(s *entity.Server) error
+	ValidateField(key string, value interface{}) error
+	ValidateServerId(id string) error
+	ValidateServerName(name string) error
+	ValidateServerStatus(status string) error
+	ValidateServerIpv4(ipv4 string) error
 }
