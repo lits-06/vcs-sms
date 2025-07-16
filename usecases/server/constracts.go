@@ -2,15 +2,19 @@ package server
 
 import (
 	"context"
+	"mime/multipart"
 
 	"github.com/lits-06/vcs-sms/entity"
 )
 
 type UseCase interface {
 	CreateServer(ctx context.Context, req CreateServerRequest) (*entity.Server, error)
-	ViewServer(ctx context.Context, req ViewServerRequest) (*ViewServerResponse, error)
+	ViewServer(ctx context.Context, req QueryServerRequest) (*QueryServerResponse, error)
 	UpdateServer(ctx context.Context, req UpdateServerRequest) error
 	DeleteServer(ctx context.Context, serverID string) error
+
+	ImportServersFromExcel(ctx context.Context, file multipart.File) (*ImportRespose, error)
+	ExportServersToExcel(ctx context.Context, req QueryServerRequest) error
 }
 
 // Repository defines the interface for server data operations
@@ -32,9 +36,9 @@ type Repository interface {
 
 // ServerFilter represents filtering criteria for servers
 type ServerFilter struct {
-	Name   string              `json:"name,omitempty" validate:"omitempty"`
-	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF UNKNOWN"`
-	IPv4   string              `json:"ipv4,omitempty"	validate:"omitempty,ipv4"`
+	Name   string              `json:"name,omitempty" validate:"omitempty" form:"name"`
+	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF UNKNOWN" form:"status"`
+	IPv4   string              `json:"ipv4,omitempty" validate:"omitempty,ipv4" form:"ipv4"`
 }
 
 // SortOrder represents sorting direction
@@ -47,17 +51,14 @@ const (
 
 // ServerSort represents sorting criteria
 type ServerSort struct {
-	Field string    `json:"field,omitempty" validate:"omitempty,oneof=name status created_at updated_at last_checked"`
-	Order SortOrder `json:"order,omitempty" validate:"omitempty,oneof=asc desc"` // asc, desc
+	Sort  string    `json:"sort,omitempty" validate:"omitempty,oneof=name status created_at updated_at last_checked" form:"sort"` // name, status, created_at, updated_at, last_checked
+	Order SortOrder `json:"order,omitempty" validate:"omitempty,oneof=asc desc" form:"order"`                                     // asc, desc
 }
 
 // Pagination represents pagination parameters
 type ServerPagination struct {
-	From  int `json:"from,omitempty"`  // offset
-	To    int `json:"to,omitempty"`    // limit (or you can use Size instead)
-	Size  int `json:"size,omitempty"`  // page size
-	Page  int `json:"page,omitempty"`  // page number (alternative to from/to)
-	Total int `json:"total,omitempty"` // total count (for response)
+	From int `json:"from,omitempty" form:"from"` // offset
+	To   int `json:"to,omitempty" form:"to"`     // limit (or you can use Size instead)
 }
 
 type CreateServerRequest struct {
@@ -66,18 +67,27 @@ type CreateServerRequest struct {
 	IPv4 string `json:"ipv4" validate:"required,ipv4"`
 }
 
-type ViewServerRequest struct {
+type QueryServerRequest struct {
 	Filter     ServerFilter     `json:"filter"`
 	Pagination ServerPagination `json:"pagination"`
 	Sort       ServerSort       `json:"sort"`
 }
 
-type ViewServerResponse struct {
+type QueryServerResponse struct {
 	Servers []entity.Server `json:"servers"`
 	Total   int             `json:"total"`
 }
 
 type UpdateServerRequest struct {
-	ServerID   string                 `json:"id"`
-	UpdateData map[string]interface{} `json:"update_data"`
+	ID     string              `json:"id"`
+	Name   string              `json:"name,omitempty" validate:"omitempty"`
+	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF UNKNOWN"`
+	IPv4   string              `json:"ipv4,omitempty" validate:"omitempty,ipv4"`
+}
+
+type ImportRespose struct {
+	SuccessCount   int
+	FailureCount   int
+	SuccessServers []string // format: "ID:Name"
+	FailureServers []string // format: "ID:Name - error message"
 }
