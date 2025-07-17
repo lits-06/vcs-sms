@@ -1,24 +1,31 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/lits-06/vcs-sms/api/handler"
 	"github.com/lits-06/vcs-sms/api/router"
+	"github.com/lits-06/vcs-sms/config"
 	"github.com/lits-06/vcs-sms/infrastructure/database"
 	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/usecases/server"
 )
 
 func main() {
-	appLogger, err := logger.NewZapLogger()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal("Failed to load config:", err)
+	}
+
+	appLogger, err := logger.NewZapLogger(&cfg.Logging)
 	if err != nil {
 		log.Fatal("Failed to initialize logger:", err)
 	}
 
 	appLogger.Info("Starting Server Management System...")
 
-	db, err := database.NewPostgresConnection()
+	db, err := database.NewPostgresConnection(&cfg.Database)
 	if err != nil {
 		appLogger.Fatal("Failed to connect to database", "error", err)
 	}
@@ -32,8 +39,11 @@ func main() {
 	routes := router.NewRoute(serverHandler)
 	r := routes.SetupRoutes()
 
-	appLogger.Info("Server starting on port 8080")
-	if err := r.Run(":8080"); err != nil {
+	/// Start server
+	addr := fmt.Sprintf(":%d", cfg.Server.Port)
+	appLogger.Info("Server starting", "address", addr)
+
+	if err := r.Run(addr); err != nil {
 		appLogger.Fatal("Failed to start server", "error", err)
 	}
 }

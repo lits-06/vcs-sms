@@ -22,16 +22,16 @@ type Config struct {
 	Compress   bool   `yaml:"compress" json:"compress"`       // nén file cũ
 }
 
-func NewZapLogger() (*zapLogger, error) {
+func NewZapLogger(cfg *config.LoggingConfig) (*zapLogger, error) {
 	logDir := "../../logs"
 
 	// Cấu hình log rotation
 	logRotator := &lumberjack.Logger{
-		Filename:   logDir + "/" + config.LOG_FILE,
-		MaxSize:    config.LOG_MAX_AGE,     // MB
-		MaxBackups: config.LOG_MAX_BACKUPS, // số file backup
-		MaxAge:     config.LOG_MAX_AGE,     // ngày
-		Compress:   config.LOG_COMPRESSION, // nén file cũ
+		Filename:   logDir + "/" + cfg.File,
+		MaxSize:    cfg.MaxSize,     // MB
+		MaxBackups: cfg.MaxBackups,  // số file backup
+		MaxAge:     cfg.MaxAge,      // ngày
+		Compress:   cfg.Compression, // nén file cũ
 	}
 
 	// Cấu hình encoder cho JSON format
@@ -50,7 +50,7 @@ func NewZapLogger() (*zapLogger, error) {
 	}
 
 	// Parse log level
-	level, err := zapcore.ParseLevel(config.LOG_LEVEL)
+	level, err := zapcore.ParseLevel(cfg.Level)
 	if err != nil {
 		level = zapcore.InfoLevel
 	}

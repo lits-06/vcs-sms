@@ -17,27 +17,10 @@ type UseCase interface {
 	ExportServersToExcel(ctx context.Context, req QueryServerRequest) error
 }
 
-// Repository defines the interface for server data operations
-type Repository interface {
-	// CRUD operations
-	Create(ctx context.Context, server *entity.Server) error
-	GetByID(ctx context.Context, id string) (*entity.Server, error)
-	GetByName(ctx context.Context, name string) (*entity.Server, error)
-	Update(ctx context.Context, server *entity.Server) error
-	Delete(ctx context.Context, id string) error
-
-	// Query operations
-	List(ctx context.Context, filter ServerFilter, sort ServerSort, pagination ServerPagination) ([]entity.Server, int, error)
-
-	// Validation operations
-	ExistsWithID(ctx context.Context, id string) (bool, error)
-	ExistsWithName(ctx context.Context, name string) (bool, error)
-}
-
 // ServerFilter represents filtering criteria for servers
 type ServerFilter struct {
 	Name   string              `json:"name,omitempty" validate:"omitempty" form:"name"`
-	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF UNKNOWN" form:"status"`
+	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF" form:"status"`
 	IPv4   string              `json:"ipv4,omitempty" validate:"omitempty,ipv4" form:"ipv4"`
 }
 
@@ -81,7 +64,7 @@ type QueryServerResponse struct {
 type UpdateServerRequest struct {
 	ID     string              `json:"id"`
 	Name   string              `json:"name,omitempty" validate:"omitempty"`
-	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF UNKNOWN"`
+	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF"`
 	IPv4   string              `json:"ipv4,omitempty" validate:"omitempty,ipv4"`
 }
 

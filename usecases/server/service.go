@@ -44,7 +44,6 @@ func (uc *ServerUsecase) CreateServer(ctx context.Context, req CreateServerReque
 	server := &entity.Server{
 		ID:          req.ID,
 		Name:        req.Name,
-		Status:      entity.StatusOffline,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 		LastChecked: time.Now(),
@@ -62,14 +61,6 @@ func (uc *ServerUsecase) CreateServer(ctx context.Context, req CreateServerReque
 
 // ViewServers retrieves servers with filtering, sorting, and pagination
 func (uc *ServerUsecase) ViewServer(ctx context.Context, req QueryServerRequest) (*QueryServerResponse, error) {
-	// // Try cache first
-	// cacheKey := fmt.Sprintf("servers:list:%+v", req)
-	// var response domain.ServerListResponse
-	// err := uc.repos.Cache.Get(ctx, cacheKey, &response)
-	// if err == nil {
-	// 	return &response, nil
-	// }
-
 	// Get servers from repository
 	servers, total, err := uc.serverRepo.List(ctx, req.Filter, req.Sort, req.Pagination)
 	if err != nil {
@@ -81,9 +72,6 @@ func (uc *ServerUsecase) ViewServer(ctx context.Context, req QueryServerRequest)
 		Servers: servers,
 		Total:   total,
 	}
-
-	// Cache the result for 5 minutes
-	// uc.repos.Cache.Set(ctx, cacheKey, response, 5*60)
 
 	return response, nil
 }

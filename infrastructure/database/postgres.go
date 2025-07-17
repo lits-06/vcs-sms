@@ -18,24 +18,22 @@ type PostgresDB struct {
 }
 
 // NewPostgresConnection tạo kết nối PostgreSQL với connection pooling
-func NewPostgresConnection() (*sql.DB, error) {
-	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		config.DB_HOST, config.DB_PORT, config.DB_USER, config.DB_PASSWORD, config.DB_NAME, config.DB_SSL_MODE,
-	)
-
-	db, err := sql.Open("postgres", dsn)
+func NewPostgresConnection(cfg *config.DatabaseConfig) (*sql.DB, error) {
+	db, err := sql.Open("postgres", cfg.GetDSN())
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	// Cấu hình connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(25)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(cfg.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
 
 	// Test kết nối
-	if err := db.Ping(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
