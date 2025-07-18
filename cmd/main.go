@@ -8,6 +8,7 @@ import (
 	"github.com/lits-06/vcs-sms/api/router"
 	"github.com/lits-06/vcs-sms/config"
 	"github.com/lits-06/vcs-sms/infrastructure/database"
+	infraServer "github.com/lits-06/vcs-sms/infrastructure/server"
 	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/usecases/server"
 )
@@ -25,15 +26,19 @@ func main() {
 
 	appLogger.Info("Starting Server Management System...")
 
-	db, err := database.NewPostgresConnection(&cfg.Database)
+	db, err := database.NewGormConnection(&cfg.Database)
 	if err != nil {
 		appLogger.Fatal("Failed to connect to database", "error", err)
 	}
-	defer db.Close()
+
+	if err := database.AutoMigrate(db); err != nil {
+		appLogger.Fatal("Failed to run migrations", "error", err)
+	}
 	appLogger.Info("Database connected successfully")
 
 	serverRepo := database.NewServerRepository(db)
-	serverUsecase := server.NewServerUsecase(serverRepo)
+	serverProvider := infraServer.NewPortServerProvider()
+	serverUsecase := server.NewServerUsecase(serverRepo, serverProvider)
 	serverHandler := handler.NewServerHandler(serverUsecase, appLogger)
 
 	routes := router.NewRoute(serverHandler)

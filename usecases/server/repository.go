@@ -16,7 +16,7 @@ type Repository interface {
 	Delete(ctx context.Context, id string) error
 
 	// Query operations
-	List(ctx context.Context, filter ServerFilter, sort ServerSort, pagination ServerPagination) ([]entity.Server, int, error)
+	List(ctx context.Context, filter ServerFilter, sort ServerSort, pagination ServerPagination) (*[]entity.Server, int, error)
 
 	// Validation operations
 	ExistsWithID(ctx context.Context, id string) (bool, error)

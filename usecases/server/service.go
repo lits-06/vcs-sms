@@ -12,12 +12,14 @@ import (
 )
 
 type ServerUsecase struct {
-	serverRepo Repository
+	serverRepo     Repository
+	serverProvider Provider
 }
 
-func NewServerUsecase(serverRepo Repository) *ServerUsecase {
+func NewServerUsecase(serverRepo Repository, serverProvider Provider) *ServerUsecase {
 	return &ServerUsecase{
-		serverRepo: serverRepo,
+		serverRepo:     serverRepo,
+		serverProvider: serverProvider,
 	}
 }
 
@@ -42,12 +44,17 @@ func (uc *ServerUsecase) CreateServer(ctx context.Context, req CreateServerReque
 
 	// Create server entity
 	server := &entity.Server{
-		ID:          req.ID,
-		Name:        req.Name,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-		LastChecked: time.Now(),
-		IPv4:        req.IPv4,
+		ID:        req.ID,
+		Name:      req.Name,
+		Status:    req.Status,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		IPv4:      req.IPv4,
+	}
+
+	err = uc.serverProvider.CreateServer(ctx, server)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create server: %w", err)
 	}
 
 	// Save to database
@@ -107,8 +114,14 @@ func (uc *ServerUsecase) UpdateServer(ctx context.Context, req UpdateServerReque
 		server.IPv4 = req.IPv4
 	}
 
-	// Set updated timestamp
-	server.UpdatedAt = time.Now()
+	if req.Status != "" {
+		server.Status = req.Status
+	}
+
+	err = uc.serverProvider.UpdateServer(ctx, server)
+	if err != nil {
+		return fmt.Errorf("failed to update server in provider: %w", err)
+	}
 
 	// Update server
 	err = uc.serverRepo.Update(ctx, server)
@@ -131,6 +144,11 @@ func (uc *ServerUsecase) DeleteServer(ctx context.Context, serverID string) erro
 	}
 	if !exist {
 		return fmt.Errorf("server with ID %s does not exist", serverID)
+	}
+
+	err = uc.serverProvider.DeleteServer(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("failed to delete server from provider: %w", err)
 	}
 
 	// Delete the server
@@ -254,14 +272,14 @@ func (uc *ServerUsecase) ExportServersToExcel(ctx context.Context, req QueryServ
 	}()
 
 	// Set headers
-	headers := []string{"ID", "Name", "IPv4", "Status", "Created At", "Updated At", "Last Checked"}
+	headers := []string{"ID", "Name", "IPv4", "Status", "Created At", "Updated At"}
 	for i, header := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		f.SetCellValue("Sheet1", cell, header)
 	}
 
 	// Add server data
-	for i, server := range servers {
+	for i, server := range *servers {
 		row := i + 2 // Start from row 2 (after headers)
 		f.SetCellValue("Sheet1", fmt.Sprintf("A%d", row), server.ID)
 		f.SetCellValue("Sheet1", fmt.Sprintf("B%d", row), server.Name)
@@ -269,7 +287,6 @@ func (uc *ServerUsecase) ExportServersToExcel(ctx context.Context, req QueryServ
 		f.SetCellValue("Sheet1", fmt.Sprintf("D%d", row), string(server.Status))
 		f.SetCellValue("Sheet1", fmt.Sprintf("E%d", row), server.CreatedAt.Format("2006-01-02 15:04:05"))
 		f.SetCellValue("Sheet1", fmt.Sprintf("F%d", row), server.UpdatedAt.Format("2006-01-02 15:04:05"))
-		f.SetCellValue("Sheet1", fmt.Sprintf("G%d", row), server.LastChecked.Format("2006-01-02 15:04:05"))
 	}
 
 	// Create filename with timestamp

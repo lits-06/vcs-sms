@@ -34,8 +34,8 @@ const (
 
 // ServerSort represents sorting criteria
 type ServerSort struct {
-	Sort  string    `json:"sort,omitempty" validate:"omitempty,oneof=name status created_at updated_at last_checked" form:"sort"` // name, status, created_at, updated_at, last_checked
-	Order SortOrder `json:"order,omitempty" validate:"omitempty,oneof=asc desc" form:"order"`                                     // asc, desc
+	Sort  string    `json:"sort,omitempty" validate:"omitempty,oneof=name status created_at updated_at" form:"sort"` // name, status, created_at, updated_at
+	Order SortOrder `json:"order,omitempty" validate:"omitempty,oneof=asc desc" form:"order"`                        // asc, desc
 }
 
 // Pagination represents pagination parameters
@@ -45,9 +45,10 @@ type ServerPagination struct {
 }
 
 type CreateServerRequest struct {
-	ID   string `json:"id" validate:"required"`
-	Name string `json:"name" validate:"required"`
-	IPv4 string `json:"ipv4" validate:"required,ipv4"`
+	ID     string              `json:"id" validate:"required"`
+	Name   string              `json:"name" validate:"required"`
+	IPv4   string              `json:"ipv4" validate:"required,ipv4"`
+	Status entity.ServerStatus `json:"status" validate:"omitempty,oneof=ON OFF"`
 }
 
 type QueryServerRequest struct {
@@ -57,15 +58,15 @@ type QueryServerRequest struct {
 }
 
 type QueryServerResponse struct {
-	Servers []entity.Server `json:"servers"`
-	Total   int             `json:"total"`
+	Servers *[]entity.Server `json:"servers"`
+	Total   int              `json:"total"`
 }
 
 type UpdateServerRequest struct {
 	ID     string              `json:"id"`
 	Name   string              `json:"name,omitempty" validate:"omitempty"`
-	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF"`
 	IPv4   string              `json:"ipv4,omitempty" validate:"omitempty,ipv4"`
+	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF"`
 }
 
 type ImportRespose struct {

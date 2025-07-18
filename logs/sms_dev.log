@@ -1,0 +1,13 @@
+{"level":"info","timestamp":"2025-07-18T17:09:57.332+0700","caller":"cmd/main.go:27","message":"Starting Server Management System..."}
+{"level":"info","timestamp":"2025-07-18T17:09:57.404+0700","caller":"cmd/main.go:37","message":"Database connected successfully"}
+{"level":"info","timestamp":"2025-07-18T17:09:57.405+0700","caller":"cmd/main.go:49","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.034+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-1600"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.143+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-5333"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.144+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-2389"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.145+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-9725"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.157+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-1830"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.158+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-4021"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.162+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-0604"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.170+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-9294"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.271+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-4210"}
+{"level":"info","timestamp":"2025-07-18T17:10:28.273+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-9417"}

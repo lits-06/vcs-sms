@@ -13,17 +13,8 @@ type zapLogger struct {
 	logger *zap.Logger
 }
 
-type Config struct {
-	Level      string `yaml:"level" json:"level"`             // debug, info, warn, error
-	LogFile    string `yaml:"log_file" json:"log_file"`       // đường dẫn file log
-	MaxSize    int    `yaml:"max_size" json:"max_size"`       // MB
-	MaxBackups int    `yaml:"max_backups" json:"max_backups"` // số file backup
-	MaxAge     int    `yaml:"max_age" json:"max_age"`         // ngày
-	Compress   bool   `yaml:"compress" json:"compress"`       // nén file cũ
-}
-
 func NewZapLogger(cfg *config.LoggingConfig) (*zapLogger, error) {
-	logDir := "../../logs"
+	logDir := "../logs"
 
 	// Cấu hình log rotation
 	logRotator := &lumberjack.Logger{
@@ -75,17 +66,17 @@ func NewZapLogger(cfg *config.LoggingConfig) (*zapLogger, error) {
 	core := zapcore.NewTee(fileCore, consoleCore)
 
 	// Tạo logger với caller info
-	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel))
 
 	return &zapLogger{logger: logger}, nil
 }
 
-func (l *zapLogger) Info(message string, args ...interface{}) {
-	l.logger.Info(message, l.argsToFields(args...)...)
-}
-
 func (l *zapLogger) Debug(message string, args ...interface{}) {
 	l.logger.Debug(message, l.argsToFields(args...)...)
+}
+
+func (l *zapLogger) Info(message string, args ...interface{}) {
+	l.logger.Info(message, l.argsToFields(args...)...)
 }
 
 func (l *zapLogger) Warn(message string, args ...interface{}) {
@@ -96,12 +87,12 @@ func (l *zapLogger) Error(message string, args ...interface{}) {
 	l.logger.Error(message, l.argsToFields(args...)...)
 }
 
-func (l *zapLogger) Fatal(message string, args ...interface{}) {
-	l.logger.Fatal(message, l.argsToFields(args...)...)
-}
-
 func (l *zapLogger) Panic(message string, args ...interface{}) {
 	l.logger.Panic(message, l.argsToFields(args...)...)
+}
+
+func (l *zapLogger) Fatal(message string, args ...interface{}) {
+	l.logger.Fatal(message, l.argsToFields(args...)...)
 }
 
 func (l *zapLogger) With(key string, value interface{}) Logger {
