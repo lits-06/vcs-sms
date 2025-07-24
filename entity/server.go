@@ -12,7 +12,7 @@ type Server struct {
 	Port      int          `json:"port" gorm:"-" validate:"omitempty,min=1024,max=65535"`
 	Status    ServerStatus `json:"status" db:"status" gorm:"column:status" validate:"omitempty,oneof=ON OFF"`
 	CreatedAt time.Time    `json:"created_at" db:"created_at" gorm:"column:created_at"`
-	UpdatedAt time.Time    `json:"updated_at" db:"updated_at" gorm:"column:updated_at,autoUpdateTime"`
+	UpdatedAt time.Time    `json:"updated_at" db:"updated_at" gorm:"column:updated_at;autoUpdateTime"`
 	IPv4      string       `json:"ipv4" db:"ipv4" gorm:"column:ipv4" validate:"omitempty,ipv4"`
 }
 

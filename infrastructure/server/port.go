@@ -2,38 +2,118 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/lits-06/vcs-sms/entity"
+	"github.com/lits-06/vcs-sms/infrastructure/kafka"
+	"github.com/redis/go-redis/v9"
 )
 
 // PortServerProvider implements ServerProvider interface
 // This provider manages servers by starting/stopping services on specific ports
 type PortServerProvider struct {
-	activeServers map[string]*ServerProcess
+	redisClient  *redis.Client
+	kafkaClient  *kafka.Client
+	statusTicker *time.Ticker
+	stopChan     chan bool
 }
 
 // ServerProcess represents a running server process
 type ServerProcess struct {
-	ServerID   string
-	Host       string
-	Port       int
-	HTTPServer *http.Server // HTTP server instance for Golang implementation
-	Status     entity.ServerStatus
+	ServerID   string              `json:"server_id"`
+	Host       string              `json:"host"`
+	Port       int                 `json:"port"`
+	HTTPServer *http.Server        `json:"-"`
+	Status     entity.ServerStatus `json:"status"`
 }
 
-// NewPortServerProvider creates a new instance of PortServerProvider
-func NewPortServerProvider() *PortServerProvider {
-	return &PortServerProvider{
-		activeServers: make(map[string]*ServerProcess),
+// NewPortServerProvider creates a new PortServerProvider
+func NewPortServerProvider(kafkaClient *kafka.Client, redisClient *redis.Client) *PortServerProvider {
+	p := &PortServerProvider{
+		kafkaClient: kafkaClient,
+		redisClient: redisClient,
+		stopChan:    make(chan bool),
+	}
+
+	// Start periodic status reporting
+	p.startStatusReporting()
+
+	return p
+}
+
+// startStatusReporting starts periodic status reporting every 10 seconds
+func (p *PortServerProvider) startStatusReporting() {
+	p.statusTicker = time.NewTicker(10 * time.Second)
+
+	go func() {
+		for {
+			select {
+			case <-p.statusTicker.C:
+				p.reportAllServerStatus()
+			case <-p.stopChan:
+				return
+			}
+		}
+	}()
+}
+
+// reportAllServerStatus reports status of all managed servers
+func (p *PortServerProvider) reportAllServerStatus() {
+	ctx := context.Background()
+
+	// Get all server keys from Redis
+	keys, err := p.redisClient.Keys(ctx, "server:*").Result()
+	if err != nil {
+		fmt.Printf("Failed to get server keys from Redis: %v\n", err)
+		return
+	}
+
+	for _, key := range keys {
+		serverData, err := p.redisClient.Get(ctx, key).Result()
+		if err != nil {
+			continue
+		}
+
+		var process ServerProcess
+		if err := json.Unmarshal([]byte(serverData), &process); err != nil {
+			continue
+		}
+
+		// Check current health status
+		currentStatus := p.checkServerHealth(&process)
+
+		// Update status if changed
+		if currentStatus != process.Status {
+			process.Status = currentStatus
+			p.saveServerProcess(ctx, &process)
+		}
+
+		// Publish status to Kafka
+		statusMsg := kafka.ServerStatusMessage{
+			ServerID:  process.ServerID,
+			Status:    string(process.Status),
+			Port:      process.Port,
+			Host:      process.Host,
+			Timestamp: time.Now(),
+		}
+
+		if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
+			fmt.Printf("Failed to publish status for server %s: %v\n", process.ServerID, err)
+		}
 	}
 }
 
 // CreateServer creates a new server by automatically finding an available port
 func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Server) error {
+	// Check if server already exists
+	if p.serverExists(ctx, server.ID) {
+		return fmt.Errorf("server %s already exists", server.ID)
+	}
+
 	// Find an available port automatically
 	availablePort, err := p.findAvailablePort()
 	if err != nil {
@@ -41,22 +121,44 @@ func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Se
 	}
 
 	// Store server info but don't start it yet
-	p.activeServers[server.ID] = &ServerProcess{
-		ServerID:   server.ID,
-		Host:       "localhost", // Always use localhost
-		Port:       availablePort,
-		HTTPServer: nil,
-		Status:     entity.StatusOffline, // Always start as offline
+	process := &ServerProcess{
+		ServerID: server.ID,
+		Host:     "localhost", // Always use localhost
+		Port:     availablePort,
+		Status:   entity.StatusOffline,
 	}
 
-	// Follow server.Status - if ON, start the server automatically
+	// Save to Redis
+	if err := p.saveServerProcess(ctx, process); err != nil {
+		return fmt.Errorf("failed to save server process: %w", err)
+	}
+
 	if server.Status == entity.StatusOnline {
-		err = p.StartServer(ctx, server.ID)
-		if err != nil {
-			// If failed to start, clean up and return error
-			delete(p.activeServers, server.ID)
-			return fmt.Errorf("failed to start server after creation: %w", err)
+		// If server is online, start it immediately
+		if err := p.StartServer(ctx, server.ID); err != nil {
+			return fmt.Errorf("failed to start server %s: %w", server.ID, err)
 		}
+	} else {
+		// If server is offline, just save the initial status
+		process.Status = server.Status
+		if err := p.saveServerProcess(ctx, process); err != nil {
+			return fmt.Errorf("failed to save initial server status: %w", err)
+		}
+	}
+
+	finalProcess, _ := p.getServerProcess(ctx, server.ID)
+
+	// Publish initial status immediately
+	statusMsg := kafka.ServerStatusMessage{
+		ServerID:  server.ID,
+		Status:    string(finalProcess.Status),
+		Port:      finalProcess.Port,
+		Host:      finalProcess.Host,
+		Timestamp: time.Now(),
+	}
+
+	if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
+		fmt.Printf("Failed to publish initial status for server %s: %v\n", server.ID, err)
 	}
 
 	return nil
@@ -64,114 +166,130 @@ func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Se
 
 // UpdateServer updates an existing server's information
 func (p *PortServerProvider) UpdateServer(ctx context.Context, server *entity.Server) error {
-	serverProcess, exists := p.activeServers[server.ID]
-	if !exists {
-		return fmt.Errorf("server %s not found", server.ID)
+	_, err := p.getServerProcess(ctx, server.ID)
+	if err != nil {
+		return fmt.Errorf("server %s not found: %w", server.ID, err)
 	}
 
-	// Get current status
-	currentStatus := serverProcess.Status
-
-	// Follow server.Status - handle status changes
-	if server.Status == entity.StatusOnline && currentStatus == entity.StatusOffline {
-		// Need to start the server
-		err := p.StartServer(ctx, server.ID)
-		if err != nil {
-			return fmt.Errorf("failed to start server during update: %w", err)
+	if server.Status == entity.StatusOnline {
+		// If server is online, start it
+		if err := p.StartServer(ctx, server.ID); err != nil {
+			return fmt.Errorf("failed to start server %s: %w", server.ID, err)
 		}
-	} else if server.Status == entity.StatusOffline && currentStatus == entity.StatusOnline {
-		// Need to stop the server
-		err := p.StopServer(ctx, server.ID)
-		if err != nil {
-			return fmt.Errorf("failed to stop server during update: %w", err)
+	} else {
+		// If server is offline, stop it
+		if err := p.StopServer(ctx, server.ID); err != nil {
+			return fmt.Errorf("failed to stop server %s: %w", server.ID, err)
 		}
 	}
-	// If status is the same, no action needed
 
 	return nil
 }
 
 // DeleteServer stops and removes a server
 func (p *PortServerProvider) DeleteServer(ctx context.Context, serverID string) error {
-	serverProcess, exists := p.activeServers[serverID]
-	if !exists {
-		return fmt.Errorf("server %s not found", serverID)
+	process, err := p.getServerProcess(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("server %s not found: %w", serverID, err)
 	}
 
 	// Stop the server if it's running
-	if serverProcess.Status == entity.StatusOnline && serverProcess.HTTPServer != nil {
-		err := p.stopServerProcess(serverProcess)
-		if err != nil {
-			return fmt.Errorf("Failed to stop server %s: %v", serverID, err)
+	if process.HTTPServer != nil {
+		if err := process.HTTPServer.Shutdown(ctx); err != nil {
+			fmt.Printf("Failed to shutdown server %s gracefully: %v\n", serverID, err)
 		}
 	}
 
-	// Remove from active servers
-	delete(p.activeServers, serverID)
+	if err := p.redisClient.Del(ctx, "server:"+serverID).Err(); err != nil {
+		return fmt.Errorf("failed to delete server from Redis: %w", err)
+	}
+
+	// Publish deletion status
+	statusMsg := kafka.ServerStatusMessage{
+		ServerID:  serverID,
+		Status:    string(entity.StatusOffline),
+		Port:      process.Port,
+		Host:      process.Host,
+		Timestamp: time.Now(),
+	}
+
+	if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
+		fmt.Printf("Failed to publish deletion status for server %s: %v\n", serverID, err)
+	}
 
 	return nil
 }
 
 // StartServer starts a server on its designated port
 func (p *PortServerProvider) StartServer(ctx context.Context, serverID string) error {
-	serverProcess, exists := p.activeServers[serverID]
-	if !exists {
-		return fmt.Errorf("server %s not found", serverID)
+	process, err := p.getServerProcess(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("server %s not found: %w", serverID, err)
 	}
 
-	if serverProcess.Status == entity.StatusOnline {
-		return nil // Server is already running
-	}
-
-	// Check if port is available (it should be since we assigned it automatically)
-	if p.isPortInUse(serverProcess.Port) {
-		// If port is now in use, try to find a new one
-		newPort, err := p.findAvailablePort()
-		if err != nil {
-			return fmt.Errorf("port %d is in use and no alternative port found: %w", serverProcess.Port, err)
+	if process.HTTPServer != nil {
+		actualStatus := p.checkServerHealth(process)
+		if actualStatus == entity.StatusOnline {
+			return nil // Server is already running and healthy
 		}
-		serverProcess.Port = newPort
+		// Server object exists but not healthy, need to restart
+		p.forceStopServer(process)
 	}
 
-	// Mark status as online before starting
-	serverProcess.Status = entity.StatusOnline
+	// Create a simple HTTP server
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"healthy","server_id":"` + serverID + `", "port":` + fmt.Sprintf("%d", process.Port) + `, "host":"` + process.Host + `"}`))
+	})
 
-	// Start a simple HTTP server on the port using Golang (simulation)
-	// Create a simple HTTP server that serves on the specified port
+	server := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", process.Host, process.Port),
+		Handler: mux,
+	}
+
+	process.HTTPServer = server
+	process.Status = entity.StatusOnline
+
 	go func() {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "Server %s running on localhost:%d",
-				serverID, serverProcess.Port)
-		})
-		mux.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, `{"server_id": "%s", "port": %d, "status": "%s"}`,
-				serverID, serverProcess.Port, serverProcess.Status)
-		})
-
-		server := &http.Server{
-			Addr:    fmt.Sprintf("localhost:%d", serverProcess.Port),
-			Handler: mux,
-		}
-
-		// Store server instance for graceful shutdown
-		serverProcess.HTTPServer = server
-
-		// Start server (this will block)
-		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			serverProcess.Status = entity.StatusOffline
-			serverProcess.HTTPServer = nil
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Printf("Failed to start server %s: %v\n", serverID, err)
+			process.Status = entity.StatusOffline
+			process.HTTPServer = nil
+			p.saveServerProcess(ctx, process)
 		}
 	}()
 
-	// Give the server a moment to start
-	time.Sleep(100 * time.Millisecond)
+	// Wait a moment to ensure server started
+	time.Sleep(200 * time.Millisecond)
 
 	// Verify server is actually running
-	if !p.isPortInUse(serverProcess.Port) {
-		serverProcess.Status = entity.StatusOffline
-		return fmt.Errorf("failed to start server on localhost:%d", serverProcess.Port)
+	actualStatus := p.checkServerHealth(process)
+	if actualStatus != entity.StatusOnline {
+		process.Status = entity.StatusOffline
+		process.HTTPServer = nil
+		if err := p.saveServerProcess(ctx, process); err != nil {
+			return fmt.Errorf("failed to save server process after start failure: %w", err)
+		}
+		return fmt.Errorf("server %s failed to start properly", serverID)
+	}
+
+	// Save updated process
+	if err := p.saveServerProcess(ctx, process); err != nil {
+		return fmt.Errorf("failed to save server process: %w", err)
+	}
+
+	// Publish start status
+	statusMsg := kafka.ServerStatusMessage{
+		ServerID:  serverID,
+		Status:    string(process.Status),
+		Port:      process.Port,
+		Host:      process.Host,
+		Timestamp: time.Now(),
+	}
+
+	if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
+		fmt.Printf("Failed to publish start status for server %s: %v\n", serverID, err)
 	}
 
 	return nil
@@ -179,18 +297,37 @@ func (p *PortServerProvider) StartServer(ctx context.Context, serverID string) e
 
 // StopServer stops a running server
 func (p *PortServerProvider) StopServer(ctx context.Context, serverID string) error {
-	serverProcess, exists := p.activeServers[serverID]
-	if !exists {
-		return fmt.Errorf("server %s not found", serverID)
-	}
-
-	if serverProcess.Status == entity.StatusOffline {
-		return nil // Server is already stopped
-	}
-
-	err := p.stopServerProcess(serverProcess)
+	process, err := p.getServerProcess(ctx, serverID)
 	if err != nil {
-		return fmt.Errorf("failed to stop server %s: %w", serverID, err)
+		return fmt.Errorf("server %s not found: %w", serverID, err)
+	}
+
+	if process.HTTPServer == nil && process.Status == entity.StatusOffline {
+		return nil
+	}
+
+	// Force stop the server
+	p.forceStopServer(process)
+
+	process.HTTPServer = nil
+	process.Status = entity.StatusOffline
+
+	// Save updated process
+	if err := p.saveServerProcess(ctx, process); err != nil {
+		return fmt.Errorf("failed to save server process: %w", err)
+	}
+
+	// Publish stop status
+	statusMsg := kafka.ServerStatusMessage{
+		ServerID:  serverID,
+		Status:    string(process.Status),
+		Port:      process.Port,
+		Host:      process.Host,
+		Timestamp: time.Now(),
+	}
+
+	if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
+		fmt.Printf("Failed to publish stop status for server %s: %v\n", serverID, err)
 	}
 
 	return nil
@@ -198,26 +335,74 @@ func (p *PortServerProvider) StopServer(ctx context.Context, serverID string) er
 
 // GetServerStatus returns the current status of a server by making HTTP health check
 func (p *PortServerProvider) GetServerStatus(ctx context.Context, serverID string) (entity.ServerStatus, error) {
-	serverProcess, exists := p.activeServers[serverID]
-	if !exists {
-		return entity.StatusOffline, fmt.Errorf("server %s not found", serverID)
+	process, err := p.getServerProcess(ctx, serverID)
+	if err != nil {
+		return entity.StatusOffline, fmt.Errorf("server %s not found: %w", serverID, err)
 	}
 
-	// Make HTTP request to server's /status endpoint to check if it's really alive
-	status := p.checkServerHealth(serverProcess)
+	// Check actual health status
+	actualStatus := p.checkServerHealth(process)
 
-	// Update the stored status
-	serverProcess.Status = status
-
-	// If server is not responding, clean up HTTPServer reference
-	if status == entity.StatusOffline && serverProcess.HTTPServer != nil {
-		serverProcess.HTTPServer = nil
+	// Update status if different
+	if actualStatus != process.Status {
+		process.Status = actualStatus
+		p.saveServerProcess(ctx, process)
 	}
 
-	return status, nil
+	return actualStatus, nil
 }
 
-// Helper methods
+// checkServerHealth makes HTTP request to server to check if it's healthy
+func (p *PortServerProvider) checkServerHealth(serverProcess *ServerProcess) entity.ServerStatus {
+	if serverProcess.HTTPServer == nil {
+		return entity.StatusOffline
+	}
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(fmt.Sprintf("http://%s:%d/health", serverProcess.Host, serverProcess.Port))
+	if err != nil {
+		return entity.StatusOffline
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		return entity.StatusOnline
+	}
+
+	return entity.StatusOffline
+}
+
+// saveServerProcess saves server process to Redis
+func (p *PortServerProvider) saveServerProcess(ctx context.Context, process *ServerProcess) error {
+	data, err := json.Marshal(process)
+	if err != nil {
+		return err
+	}
+
+	return p.redisClient.Set(ctx, "server:"+process.ServerID, data, 0).Err()
+}
+
+// getServerProcess retrieves server process from Redis
+func (p *PortServerProvider) getServerProcess(ctx context.Context, serverID string) (*ServerProcess, error) {
+	data, err := p.redisClient.Get(ctx, "server:"+serverID).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	var process ServerProcess
+	if err := json.Unmarshal([]byte(data), &process); err != nil {
+		return nil, err
+	}
+
+	return &process, nil
+}
+
+// serverExists checks if server exists in Redis
+func (p *PortServerProvider) serverExists(ctx context.Context, serverID string) bool {
+	exists, err := p.redisClient.Exists(ctx, "server:"+serverID).Result()
+	return err == nil && exists > 0
+}
+
 func (p *PortServerProvider) findAvailablePort() (int, error) {
 	// Try to let OS assign an available port by listening on port 0
 	// This is much faster than looping through ports
@@ -237,42 +422,7 @@ func (p *PortServerProvider) findAvailablePort() (int, error) {
 		return p.findPortStartingFrom(8001)
 	}
 
-	// Double-check that the port is not already assigned to another server
-	if p.isPortAssignedToServer(port) {
-		// If already assigned, try to find another one
-		return p.findPortStartingFrom(8001)
-	}
-
 	return port, nil
-}
-
-// checkServerHealth makes HTTP request to server to check if it's healthy
-func (p *PortServerProvider) checkServerHealth(serverProcess *ServerProcess) entity.ServerStatus {
-	// Create HTTP client with timeout
-	client := &http.Client{
-		Timeout: 3 * time.Second, // 3 second timeout
-	}
-
-	// Make request to server's status endpoint
-	url := fmt.Sprintf("http://localhost:%d/status", serverProcess.Port)
-
-	resp, err := client.Get(url)
-	if err != nil {
-		// Fallback: check if port is still in use
-		if p.isPortInUse(serverProcess.Port) {
-			// Port is in use but server not responding properly
-			return entity.StatusOffline
-		}
-		return entity.StatusOffline
-	}
-	defer resp.Body.Close()
-
-	// Check if response is successful
-	if resp.StatusCode == http.StatusOK {
-		return entity.StatusOnline
-	}
-
-	return entity.StatusOffline
 }
 
 // findPortStartingFrom finds available port starting from specified port (fallback method)
@@ -285,21 +435,11 @@ func (p *PortServerProvider) findPortStartingFrom(startPort int) (int, error) {
 			break
 		}
 
-		if !p.isPortInUse(port) && !p.isPortAssignedToServer(port) {
+		if !p.isPortInUse(port) {
 			return port, nil
 		}
 	}
 	return 0, fmt.Errorf("no available ports found after %d attempts starting from port %d", maxAttempts, startPort)
-}
-
-// isPortAssignedToServer checks if a port is already assigned to any managed server
-func (p *PortServerProvider) isPortAssignedToServer(port int) bool {
-	for _, serverProcess := range p.activeServers {
-		if serverProcess.Port == port {
-			return true
-		}
-	}
-	return false
 }
 
 // isPortInUse checks if a port is currently in use on localhost
@@ -312,21 +452,27 @@ func (p *PortServerProvider) isPortInUse(port int) bool {
 	return false // Port is available
 }
 
-// stopServerProcess stops a server process
-func (p *PortServerProvider) stopServerProcess(serverProcess *ServerProcess) error {
-	// Stop HTTP server if it exists
-	if serverProcess.HTTPServer != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+// Close stops the status reporting and cleans up resources
+func (p *PortServerProvider) Close() {
+	if p.statusTicker != nil {
+		p.statusTicker.Stop()
+	}
+	close(p.stopChan)
+}
 
-		err := serverProcess.HTTPServer.Shutdown(ctx)
-		if err != nil {
-			// Force close if graceful shutdown fails
-			serverProcess.HTTPServer.Close()
-		}
-		serverProcess.HTTPServer = nil
+// forceStopServer forcefully stops a server without updating Redis
+func (p *PortServerProvider) forceStopServer(process *ServerProcess) {
+	if process.HTTPServer == nil {
+		return
 	}
 
-	serverProcess.Status = entity.StatusOffline
-	return nil
+	// Try graceful shutdown first
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	if err := process.HTTPServer.Shutdown(shutdownCtx); err != nil {
+		// If graceful shutdown fails, try to close forcefully
+		fmt.Printf("Graceful shutdown failed for server %s, forcing close: %v\n", process.ServerID, err)
+		process.HTTPServer.Close()
+	}
 }

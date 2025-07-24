@@ -14,3 +14,7 @@ type Provider interface {
 	StopServer(ctx context.Context, serverID string) error
 	GetServerStatus(ctx context.Context, serverID string) (entity.ServerStatus, error)
 }
+
+type MessageConsumer interface {
+	ConsumeServerStatus(ctx context.Context, handler func(*StatusRecord) error) error
+}
