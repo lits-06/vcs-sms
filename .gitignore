@@ -1,1 +1,2 @@
 infrastructure/database/postgres_data/
+infrastructure/redis/redis_data/

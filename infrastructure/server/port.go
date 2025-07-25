@@ -9,17 +9,15 @@ import (
 	"time"
 
 	"github.com/lits-06/vcs-sms/entity"
-	"github.com/lits-06/vcs-sms/infrastructure/kafka"
 	"github.com/redis/go-redis/v9"
 )
 
 // PortServerProvider implements ServerProvider interface
 // This provider manages servers by starting/stopping services on specific ports
 type PortServerProvider struct {
-	redisClient  *redis.Client
-	kafkaClient  *kafka.Client
-	statusTicker *time.Ticker
-	stopChan     chan bool
+	redisClient *redis.Client
+	// statusTicker *time.Ticker
+	// stopChan     chan bool
 }
 
 // ServerProcess represents a running server process
@@ -32,80 +30,66 @@ type ServerProcess struct {
 }
 
 // NewPortServerProvider creates a new PortServerProvider
-func NewPortServerProvider(kafkaClient *kafka.Client, redisClient *redis.Client) *PortServerProvider {
+func NewPortServerProvider(redisClient *redis.Client) *PortServerProvider {
 	p := &PortServerProvider{
-		kafkaClient: kafkaClient,
 		redisClient: redisClient,
-		stopChan:    make(chan bool),
+		// stopChan:    make(chan bool),
 	}
 
 	// Start periodic status reporting
-	p.startStatusReporting()
+	// p.startStatusReporting()
 
 	return p
 }
 
-// startStatusReporting starts periodic status reporting every 10 seconds
-func (p *PortServerProvider) startStatusReporting() {
-	p.statusTicker = time.NewTicker(10 * time.Second)
+// // startStatusReporting starts periodic status reporting every 10 seconds
+// func (p *PortServerProvider) startStatusReporting() {
+// 	p.statusTicker = time.NewTicker(10 * time.Second)
 
-	go func() {
-		for {
-			select {
-			case <-p.statusTicker.C:
-				p.reportAllServerStatus()
-			case <-p.stopChan:
-				return
-			}
-		}
-	}()
-}
+// 	go func() {
+// 		for {
+// 			select {
+// 			case <-p.statusTicker.C:
+// 				p.reportAllServerStatus()
+// 			case <-p.stopChan:
+// 				return
+// 			}
+// 		}
+// 	}()
+// }
 
-// reportAllServerStatus reports status of all managed servers
-func (p *PortServerProvider) reportAllServerStatus() {
-	ctx := context.Background()
+// // reportAllServerStatus reports status of all managed servers
+// func (p *PortServerProvider) reportAllServerStatus() {
+// 	ctx := context.Background()
 
-	// Get all server keys from Redis
-	keys, err := p.redisClient.Keys(ctx, "server:*").Result()
-	if err != nil {
-		fmt.Printf("Failed to get server keys from Redis: %v\n", err)
-		return
-	}
+// 	// Get all server keys from Redis
+// 	keys, err := p.redisClient.Keys(ctx, "server:*").Result()
+// 	if err != nil {
+// 		fmt.Printf("Failed to get server keys from Redis: %v\n", err)
+// 		return
+// 	}
 
-	for _, key := range keys {
-		serverData, err := p.redisClient.Get(ctx, key).Result()
-		if err != nil {
-			continue
-		}
+// 	for _, key := range keys {
+// 		serverData, err := p.redisClient.Get(ctx, key).Result()
+// 		if err != nil {
+// 			continue
+// 		}
 
-		var process ServerProcess
-		if err := json.Unmarshal([]byte(serverData), &process); err != nil {
-			continue
-		}
+// 		var process ServerProcess
+// 		if err := json.Unmarshal([]byte(serverData), &process); err != nil {
+// 			continue
+// 		}
 
-		// Check current health status
-		currentStatus := p.checkServerHealth(&process)
+// 		// Check current health status
+// 		currentStatus := p.checkServerHealth(&process)
 
-		// Update status if changed
-		if currentStatus != process.Status {
-			process.Status = currentStatus
-			p.saveServerProcess(ctx, &process)
-		}
-
-		// Publish status to Kafka
-		statusMsg := kafka.ServerStatusMessage{
-			ServerID:  process.ServerID,
-			Status:    string(process.Status),
-			Port:      process.Port,
-			Host:      process.Host,
-			Timestamp: time.Now(),
-		}
-
-		if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
-			fmt.Printf("Failed to publish status for server %s: %v\n", process.ServerID, err)
-		}
-	}
-}
+// 		// Update status if changed
+// 		if currentStatus != process.Status {
+// 			process.Status = currentStatus
+// 			p.saveServerProcess(ctx, &process)
+// 		}
+// 	}
+// }
 
 // CreateServer creates a new server by automatically finding an available port
 func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Server) error {
@@ -144,21 +128,6 @@ func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Se
 		if err := p.saveServerProcess(ctx, process); err != nil {
 			return fmt.Errorf("failed to save initial server status: %w", err)
 		}
-	}
-
-	finalProcess, _ := p.getServerProcess(ctx, server.ID)
-
-	// Publish initial status immediately
-	statusMsg := kafka.ServerStatusMessage{
-		ServerID:  server.ID,
-		Status:    string(finalProcess.Status),
-		Port:      finalProcess.Port,
-		Host:      finalProcess.Host,
-		Timestamp: time.Now(),
-	}
-
-	if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
-		fmt.Printf("Failed to publish initial status for server %s: %v\n", server.ID, err)
 	}
 
 	return nil
@@ -202,19 +171,6 @@ func (p *PortServerProvider) DeleteServer(ctx context.Context, serverID string) 
 
 	if err := p.redisClient.Del(ctx, "server:"+serverID).Err(); err != nil {
 		return fmt.Errorf("failed to delete server from Redis: %w", err)
-	}
-
-	// Publish deletion status
-	statusMsg := kafka.ServerStatusMessage{
-		ServerID:  serverID,
-		Status:    string(entity.StatusOffline),
-		Port:      process.Port,
-		Host:      process.Host,
-		Timestamp: time.Now(),
-	}
-
-	if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
-		fmt.Printf("Failed to publish deletion status for server %s: %v\n", serverID, err)
 	}
 
 	return nil
@@ -279,19 +235,6 @@ func (p *PortServerProvider) StartServer(ctx context.Context, serverID string) e
 		return fmt.Errorf("failed to save server process: %w", err)
 	}
 
-	// Publish start status
-	statusMsg := kafka.ServerStatusMessage{
-		ServerID:  serverID,
-		Status:    string(process.Status),
-		Port:      process.Port,
-		Host:      process.Host,
-		Timestamp: time.Now(),
-	}
-
-	if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
-		fmt.Printf("Failed to publish start status for server %s: %v\n", serverID, err)
-	}
-
 	return nil
 }
 
@@ -315,19 +258,6 @@ func (p *PortServerProvider) StopServer(ctx context.Context, serverID string) er
 	// Save updated process
 	if err := p.saveServerProcess(ctx, process); err != nil {
 		return fmt.Errorf("failed to save server process: %w", err)
-	}
-
-	// Publish stop status
-	statusMsg := kafka.ServerStatusMessage{
-		ServerID:  serverID,
-		Status:    string(process.Status),
-		Port:      process.Port,
-		Host:      process.Host,
-		Timestamp: time.Now(),
-	}
-
-	if err := p.kafkaClient.PublishServerStatus(ctx, statusMsg); err != nil {
-		fmt.Printf("Failed to publish stop status for server %s: %v\n", serverID, err)
 	}
 
 	return nil
@@ -453,12 +383,12 @@ func (p *PortServerProvider) isPortInUse(port int) bool {
 }
 
 // Close stops the status reporting and cleans up resources
-func (p *PortServerProvider) Close() {
-	if p.statusTicker != nil {
-		p.statusTicker.Stop()
-	}
-	close(p.stopChan)
-}
+// func (p *PortServerProvider) Close() {
+// 	if p.statusTicker != nil {
+// 		p.statusTicker.Stop()
+// 	}
+// 	close(p.stopChan)
+// }
 
 // forceStopServer forcefully stops a server without updating Redis
 func (p *PortServerProvider) forceStopServer(process *ServerProcess) {

@@ -39,9 +39,29 @@ type UptimeStats struct {
 	UptimePercentage float64 `json:"uptime_percentage"`
 }
 
-type Record interface {
+type RecordRepository interface {
 	Create(ctx context.Context, record *StatusRecord) error
-	GetByID(ctx context.Context, id string) (*StatusRecord, error)
-	Update(ctx context.Context, record *StatusRecord) error
-	Delete(ctx context.Context, id string) error
+}
+
+type CacheRepository interface {
+	GetServerList(ctx context.Context) (*[]entity.Server, error)
+	SetServerList(ctx context.Context, servers *[]entity.Server) error
+	GetServer(ctx context.Context, serverID string) (*entity.Server, error)
+	SetServer(ctx context.Context, serverID string, server *entity.Server) error
+	DeleteServer(ctx context.Context, serverID string) error
+	DeleteServerList(ctx context.Context) error
+}
+
+type Provider interface {
+	CreateServer(ctx context.Context, server *entity.Server) error
+	DeleteServer(ctx context.Context, serverID string) error
+	UpdateServer(ctx context.Context, server *entity.Server) error
+	StartServer(ctx context.Context, serverID string) error
+	StopServer(ctx context.Context, serverID string) error
+	GetServerStatus(ctx context.Context, serverID string) (entity.ServerStatus, error)
+}
+
+type Producer interface {
+	SendServerStatus(ctx context.Context, record *StatusRecord) error
+	Close() error
 }
