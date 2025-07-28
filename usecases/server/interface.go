@@ -31,6 +31,12 @@ type StatusRecord struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+type UptimeRequest struct {
+	StartDate time.Time `json:"start_date" validate:"required"`
+	EndDate   time.Time `json:"end_date" validate:"required"`
+	Email     string    `json:"email" validate:"omitempty,email"`
+}
+
 // UptimeStats represents uptime statistics
 type UptimeStats struct {
 	TotalServers     int     `json:"total_servers"`
@@ -40,7 +46,8 @@ type UptimeStats struct {
 }
 
 type RecordRepository interface {
-	Create(ctx context.Context, record *StatusRecord) error
+	// Create(ctx context.Context, record *StatusRecord) error
+	CreateBatch(ctx context.Context, records []*StatusRecord) error
 }
 
 type CacheRepository interface {
@@ -59,9 +66,4 @@ type Provider interface {
 	StartServer(ctx context.Context, serverID string) error
 	StopServer(ctx context.Context, serverID string) error
 	GetServerStatus(ctx context.Context, serverID string) (entity.ServerStatus, error)
-}
-
-type Producer interface {
-	SendServerStatus(ctx context.Context, record *StatusRecord) error
-	Close() error
 }

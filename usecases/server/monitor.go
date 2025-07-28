@@ -10,104 +10,78 @@ import (
 )
 
 const (
-	ServerListCacheKey = "server"
-	WorkerCount        = 10
-	ServerChannelSize  = 10000
+	WorkerCount       = 10
+	ServerChannelSize = 10000
 )
 
 type MonitorService struct {
-	serverRepo    Repository
-	cacheRepo     CacheRepository
-	recordRepo    RecordRepository
-	kafkaProducer Producer
-	provider      Provider
-	ticker        *time.Ticker
-	logger        logger.Logger
+	serverRepo Repository
+	cacheRepo  CacheRepository
+	recordRepo RecordRepository
+	provider   Provider
+	logger     logger.Logger
 
-	serverChan     chan *entity.Server
-	stopChan       chan bool
-	workerWg       sync.WaitGroup // WaitGroup cho workers
-	monitorWg      sync.WaitGroup // WaitGroup cho monitoring
-	wg             sync.WaitGroup
-	workersStarted bool
+	serverChan chan *entity.Server
+
+	ticker *time.Ticker
+
+	buffer []*StatusRecord // Buffer để lưu server tạm thời
+
+	stopChan  chan bool
+	monitorWg sync.WaitGroup // WaitGroup cho monitoring
 }
 
 func NewMonitorService(
-	serverRepo ServerRepository,
+	serverRepo Repository,
 	cacheRepo CacheRepository,
 	recordRepo RecordRepository,
-	kafkaProducer Producer,
 	provider Provider,
 	logger logger.Logger,
 	interval time.Duration,
 ) *MonitorService {
 	return &MonitorService{
-		serverRepo:    serverRepo,
-		cacheRepo:     cacheRepo,
-		recordRepo:    recordRepo,
-		kafkaProducer: kafkaProducer,
-		provider:      provider,
-		ticker:        time.NewTicker(interval), // Example interval
-		logger:        logger,
-		stopChan:      make(chan bool),
+		serverRepo: serverRepo,
+		cacheRepo:  cacheRepo,
+		recordRepo: recordRepo,
+		provider:   provider,
+		logger:     logger.With("service", "monitor"),
+
+		serverChan: make(chan *entity.Server, ServerChannelSize),
+		stopChan:   make(chan bool),
+		buffer:     make([]*StatusRecord, 0, ServerChannelSize), // Buffer size can be adjusted
+
+		ticker: time.NewTicker(interval), // Example interval
 	}
 }
 
-func (s *MonitorService) Start() {
+func (s *MonitorService) Start(ctx context.Context) {
 	s.logger.Info("Starting monitoring service")
 
-	// Initial check
-	s.checkAllServers()
-
-	go func() {
-		defer s.ticker.Stop()
-
-		for {
-			select {
-			case <-s.ticker.C:
-				s.checkAllServers()
-			case <-s.stopChan:
-				s.logger.Info("Monitoring service stopped")
-				return
-			}
-		}
-	}()
+	s.monitorWg.Add(1)
+	go s.monitoringLoop(ctx)
 }
 
-// startWorkerPool khởi tạo worker pool một lần duy nhất
-func (s *MonitorService) startWorkerPool(ctx context.Context) {
-	if s.workersStarted {
-		return
-	}
-
-	for i := 0; i < WorkerCount; i++ {
-		s.workerWg.Add(1)
-		go s.persistentWorker(ctx, i)
-	}
-
-	s.workersStarted = true
-}
-
-// persistentWorker - worker chạy liên tục, không bị tạo lại
-func (s *MonitorService) persistentWorker(ctx context.Context, workerID int) {
-	defer s.workerWg.Done()
+// monitoringLoop - vòng lặp monitoring chính
+func (s *MonitorService) monitoringLoop(ctx context.Context) {
+	defer s.monitorWg.Done()
+	defer s.ticker.Stop()
 
 	for {
 		select {
-		case server, ok := <-s.serverChan:
-			if !ok {
-				return
+		case <-s.ticker.C:
+			if err := s.checkAllServers(ctx); err != nil {
+				s.logger.Error("Failed to check servers", "error", err)
 			}
 
-			if err := s.checkSingleServer(ctx, server); err != nil {
-				s.logger.Error("Failed to check server",
-					"server_id", server.ID,
-					"server_name", server.Name,
-					"error", err,
-				)
-			}
+			s.recordRepo.CreateBatch(ctx, s.buffer)
+			s.buffer = s.buffer[:0] // Clear buffer after processing
+
+		case <-s.stopChan:
+			s.logger.Info("Monitoring service stopped")
+			return
 
 		case <-ctx.Done():
+			s.logger.Info("Monitoring service context cancelled")
 			return
 		}
 	}
@@ -116,34 +90,81 @@ func (s *MonitorService) persistentWorker(ctx context.Context, workerID int) {
 func (s *MonitorService) Stop() {
 	s.logger.Info("Stopping monitoring service")
 	close(s.stopChan)
-	s.wg.Wait()
+	s.monitorWg.Wait()
+	close(s.serverChan)
+	s.logger.Info("Monitoring service stopped")
 }
 
-func (s *MonitorService) checkAllServers() error {
-	servers, err := s.getAllServers()
+func (s *MonitorService) checkAllServers(ctx context.Context) error {
+	servers, err := s.getAllServers(ctx)
 	if err != nil {
 		s.logger.Error("Failed to get server list", "error", err)
-		return nil, err
+		return err
 	}
 
 	if len(*servers) == 0 {
 		return nil
 	}
 
+	for _, server := range *servers {
+		server := &server
+
+		actualStatus, err := s.provider.GetServerStatus(ctx, server.ID)
+		if err != nil {
+			s.logger.Warn("Failed to get server status from provider",
+				"server_id", server.ID,
+				"error", err,
+			)
+			actualStatus = entity.StatusOffline // Default to offline if check fails
+		}
+
+		// 2. Tạo status record
+		record := &StatusRecord{
+			ServerID:  server.ID,
+			Status:    string(actualStatus),
+			Timestamp: time.Now(),
+		}
+
+		// 3. Update database nếu status thay đổi
+		if server.Status != actualStatus {
+			// Update database
+			updatedServer := *server // Copy server
+			updatedServer.Status = actualStatus
+
+			if err := s.serverRepo.Update(ctx, &updatedServer); err != nil {
+				s.logger.Error("Failed to update server status in database",
+					"server_id", server.ID,
+					"error", err,
+				)
+			}
+
+			// Update cache
+			if err := s.cacheRepo.SetServer(ctx, server.ID, &updatedServer); err != nil {
+				s.logger.Warn("Failed to update server status in cache",
+					"server_id", server.ID,
+					"error", err,
+				)
+			}
+		}
+
+		s.buffer = append(s.buffer, record)
+	}
+
+	return nil
 }
 
-func (s *MonitorService) getAllServers() (*[]entity.Server, error) {
-	cacheServers, err := s.cacheRepo.GetServerList(context.Background())
+func (s *MonitorService) getAllServers(ctx context.Context) (*[]entity.Server, error) {
+	cacheServers, err := s.cacheRepo.GetServerList(ctx)
 	if err != nil && cacheServers != nil {
 		return cacheServers, nil
 	}
 
-	servers, err := s.serverRepo.List(context.Background(), ServerFilter{}, ServerSort{}, ServerPagination{})
+	servers, _, err := s.serverRepo.List(ctx, ServerFilter{}, ServerSort{}, ServerPagination{})
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.cacheRepo.SetServerList(context.Background(), servers); err != nil {
+	if err := s.cacheRepo.SetServerList(ctx, servers); err != nil {
 		s.logger.Warn("Failed to set server list in cache", "error", err)
 	}
 

@@ -54,7 +54,7 @@ type ElasticsearchConfig struct {
 	Port     int    `mapstructure:"port" validate:"required,min=1,max=65535"`
 	Username string `mapstructure:"username"`
 	Password string `mapstructure:"password"`
-	Index    string `mapstructure:"index" validate:"required"`
+	// Index    string `mapstructure:"index" validate:"required"`
 }
 
 type JWTConfig struct {

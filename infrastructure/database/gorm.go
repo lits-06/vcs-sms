@@ -21,10 +21,6 @@ func AutoMigrate(db *gorm.DB) error {
 	return nil
 }
 
-type GormDB struct {
-	*gorm.DB
-}
-
 func NewGormConnection(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	// Configure GORM logger
 	gormConfig := &gorm.Config{
