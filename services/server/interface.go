@@ -26,9 +26,10 @@ type Repository interface {
 
 // StatusRecord represents status data stored in Elasticsearch
 type StatusRecord struct {
-	ServerID  string    `json:"server_id"`
-	Status    string    `json:"status"`
-	Timestamp time.Time `json:"timestamp"`
+	ServerID  string        `json:"server_id"`
+	Status    string        `json:"status"`
+	Timestamp time.Time     `json:"timestamp"`
+	Interval  time.Duration `json:"interval"` // in seconds
 }
 
 type UptimeRequest struct {
@@ -39,15 +40,18 @@ type UptimeRequest struct {
 
 // UptimeStats represents uptime statistics
 type UptimeStats struct {
-	TotalServers     int     `json:"total_servers"`
-	OnlineServers    int     `json:"online_servers"`
-	OfflineServers   int     `json:"offline_servers"`
-	UptimePercentage float64 `json:"uptime_percentage"`
+	StartDate        time.Time `json:"start_date"`
+	EndDate          time.Time `json:"end_date"`
+	TotalServers     int       `json:"total_servers"`
+	OnlineServers    int       `json:"online_servers"`
+	OfflineServers   int       `json:"offline_servers"`
+	UptimePercentage float64   `json:"uptime_percentage"`
 }
 
 type RecordRepository interface {
 	// Create(ctx context.Context, record *StatusRecord) error
 	CreateBatch(ctx context.Context, records []*StatusRecord) error
+	GetUptimeStats(ctx context.Context, req *UptimeRequest) (*UptimeStats, error)
 }
 
 type CacheRepository interface {
@@ -66,4 +70,8 @@ type Provider interface {
 	StartServer(ctx context.Context, serverID string) error
 	StopServer(ctx context.Context, serverID string) error
 	GetServerStatus(ctx context.Context, serverID string) (entity.ServerStatus, error)
+}
+
+type MailService interface {
+	SendUptimeReport(ctx context.Context, email string, stats *UptimeStats) error
 }

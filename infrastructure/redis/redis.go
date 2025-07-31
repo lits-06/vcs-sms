@@ -7,7 +7,7 @@ import (
 
 	"github.com/lits-06/vcs-sms/config"
 	"github.com/lits-06/vcs-sms/entity"
-	"github.com/lits-06/vcs-sms/usecases/server"
+	"github.com/lits-06/vcs-sms/services/server"
 	"github.com/redis/go-redis/v9"
 )
 

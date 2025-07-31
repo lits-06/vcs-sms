@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lits-06/vcs-sms/pkg/logger"
-	"github.com/lits-06/vcs-sms/usecases/server"
+	"github.com/lits-06/vcs-sms/services/server"
 )
 
 type ServerHandler struct {

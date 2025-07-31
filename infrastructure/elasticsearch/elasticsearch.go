@@ -5,26 +5,35 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v9"
-	"github.com/elastic/go-elasticsearch/v9/esapi"
 	"github.com/lits-06/vcs-sms/config"
-	"github.com/lits-06/vcs-sms/usecases/server"
+	"github.com/lits-06/vcs-sms/services/server"
 )
 
-type searchResult struct {
+type SearchResult struct {
 	Aggregations struct {
 		Servers struct {
 			Buckets []struct {
-				Key         string `json:"key"`
-				DocCount    int    `json:"doc_count"`
-				StatusStats struct {
-					Buckets []struct {
-						Key      string `json:"key"`
-						DocCount int    `json:"doc_count"`
-					} `json:"buckets"`
-				} `json:"status_stats"`
+				Key          string `json:"key"`
+				DocCount     int    `json:"doc_count"`
+				LatestStatus struct {
+					Hits struct {
+						Hits []struct {
+							Source struct {
+								Status    string    `json:"status"`
+								Timestamp time.Time `json:"timestamp"`
+							} `json:"_source"`
+						} `json:"hits"`
+					} `json:"hits"`
+				} `json:"latest_status"`
+				OnlineIntervals struct {
+					TotalOnlineTime struct {
+						Value float64 `json:"value"`
+					} `json:"total_online_time"`
+				} `json:"online_intervals"`
 			} `json:"buckets"`
 		} `json:"servers"`
 	} `json:"aggregations"`
@@ -39,7 +48,7 @@ func NewElasticsearchClient(cfg *config.ElasticsearchConfig) (*elasticsearch.Cli
 	}
 
 	// Test connection
-	res, err := client.Info()
+	res, err := es.Info()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Elasticsearch: %w", err)
 	}
@@ -49,7 +58,7 @@ func NewElasticsearchClient(cfg *config.ElasticsearchConfig) (*elasticsearch.Cli
 		return nil, fmt.Errorf("Elasticsearch connection error: %s", res.String())
 	}
 
-	return client, nil
+	return es, nil
 }
 
 type elasticRepository struct {
@@ -61,12 +70,40 @@ func NewRecordRepository(client *elasticsearch.Client) server.RecordRepository {
 		client: client,
 	}
 
-	// Tạo index template khi khởi tạo
-	if err := repo.createIndexTemplate(context.Background()); err != nil {
-		fmt.Printf("Warning: Failed to create index template: %v\n", err)
-	}
+	repo.createIndexTemplate()
 
 	return repo
+}
+
+func (r *elasticRepository) createIndexTemplate() {
+	indexTemplate := map[string]interface{}{
+		"index_patterns": []string{"server-status-*"},
+		"template": map[string]interface{}{
+			"mappings": map[string]interface{}{
+				"properties": map[string]interface{}{
+					"server_id": map[string]interface{}{
+						"type": "keyword",
+					},
+					"status": map[string]interface{}{
+						"type": "keyword",
+					},
+					"timestamp": map[string]interface{}{
+						"type": "date",
+					},
+					"interval": map[string]interface{}{
+						"type": "long",
+					},
+				},
+			},
+		},
+	}
+
+	templateJSON, _ := json.Marshal(indexTemplate)
+
+	r.client.Indices.PutIndexTemplate(
+		"server-status-template",
+		bytes.NewReader(templateJSON),
+	)
 }
 
 func (r *elasticRepository) CreateBatch(ctx context.Context, records []*server.StatusRecord) error {
@@ -106,16 +143,13 @@ func (r *elasticRepository) CreateBatch(ctx context.Context, records []*server.S
 	return nil
 }
 
-// GetUptimeStats tính toán thống kê uptime cho tất cả server trong khoảng thời gian
-func (r *elasticRepository) GetUptimeStats(ctx context.Context, from, to time.Time) (*server.UptimeStats, error) {
-	indexPattern := r.getIndexPattern(from, to)
-
+func (r *elasticRepository) GetUptimeStats(ctx context.Context, req *server.UptimeRequest) (*server.UptimeStats, error) {
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
 			"range": map[string]interface{}{
 				"timestamp": map[string]interface{}{
-					"gte": from.Format(time.RFC3339),
-					"lte": to.Format(time.RFC3339),
+					"gte": req.StartDate.Format(time.RFC3339),
+					"lte": req.EndDate.Format(time.RFC3339),
 				},
 			},
 		},
@@ -123,18 +157,41 @@ func (r *elasticRepository) GetUptimeStats(ctx context.Context, from, to time.Ti
 			"servers": map[string]interface{}{
 				"terms": map[string]interface{}{
 					"field": "server_id",
-					"size":  10000, // Giới hạn 10000 servers
+					"size":  10000, // Giả sử tối đa 10k servers
 				},
 				"aggs": map[string]interface{}{
-					"status_stats": map[string]interface{}{
-						"terms": map[string]interface{}{
-							"field": "status",
+					// Lấy status record cuối cùng của mỗi server
+					"latest_status": map[string]interface{}{
+						"top_hits": map[string]interface{}{
+							"sort": []map[string]interface{}{
+								{
+									"timestamp": map[string]interface{}{
+										"order": "desc",
+									},
+								},
+							},
+							"size":    1, // Chỉ lấy record mới nhất
+							"_source": []string{"status", "timestamp"},
+						},
+					},
+					"online_intervals": map[string]interface{}{
+						"filter": map[string]interface{}{
+							"term": map[string]interface{}{
+								"status": "ON",
+							},
+						},
+						"aggs": map[string]interface{}{
+							"total_online_time": map[string]interface{}{
+								"sum": map[string]interface{}{
+									"field": "interval",
+								},
+							},
 						},
 					},
 				},
 			},
 		},
-		"size": 0, // Chỉ lấy aggregations, không lấy documents
+		"size": 0, // Chỉ cần aggregation, không cần documents
 	}
 
 	queryJSON, err := json.Marshal(query)
@@ -142,54 +199,39 @@ func (r *elasticRepository) GetUptimeStats(ctx context.Context, from, to time.Ti
 		return nil, fmt.Errorf("failed to marshal query: %w", err)
 	}
 
-	req := esapi.SearchRequest{
-		Index: []string{indexPattern},
-		Body:  bytes.NewReader(queryJSON),
-	}
+	indices := r.getIndicesForTimeRange(req.StartDate, req.EndDate)
+	indexPattern := strings.Join(indices, ",")
 
-	res, err := req.Do(ctx, r.client)
+	res, err := r.client.Search(
+		r.client.Search.WithContext(ctx),
+		r.client.Search.WithIndex(indexPattern),
+		r.client.Search.WithBody(bytes.NewReader(queryJSON)),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute search: %w", err)
+		return nil, fmt.Errorf("failed to search: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.IsError() {
-		return nil, fmt.Errorf("search error: %s", res.String())
+		return nil, fmt.Errorf("Elasticsearch search error: %s", res.String())
 	}
 
-	var searchResult searchResult
-
-	if err := json.NewDecoder(res.Body).Decode(&searchResult); err != nil {
-		return nil, fmt.Errorf("failed to decode search result: %w", err)
+	var result SearchResult
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return r.calculateUptimeStats(searchResult), nil
-}
-
-// calculateUptimeStats tính toán thống kê từ kết quả Elasticsearch
-func (r *elasticsearchRecordRepository) calculateUptimeStats(result searchResult) *server.UptimeStats {
 	totalServers := len(result.Aggregations.Servers.Buckets)
 	onlineServers := 0
 	offlineServers := 0
-	totalUptimePercentage := 0.0
+	totalOnlineTime := 0.0
 
-	for _, serverBucket := range result.Aggregations.Servers.Buckets {
-		onlineCount := 0
-		totalCount := 0
+	for _, bucket := range result.Aggregations.Servers.Buckets {
+		totalOnlineTime += bucket.OnlineIntervals.TotalOnlineTime.Value
 
-		for _, statusBucket := range serverBucket.StatusStats.Buckets {
-			totalCount += statusBucket.DocCount
-			if statusBucket.Key == "ON" {
-				onlineCount += statusBucket.DocCount
-			}
-		}
-
-		if totalCount > 0 {
-			serverUptimePercentage := float64(onlineCount) / float64(totalCount) * 100
-			totalUptimePercentage += serverUptimePercentage
-
-			// Xác định server hiện tại là online hay offline dựa trên majority
-			if serverUptimePercentage >= 50 {
+		if len(bucket.LatestStatus.Hits.Hits) > 0 {
+			status := bucket.LatestStatus.Hits.Hits[0].Source.Status
+			if status == "ON" {
 				onlineServers++
 			} else {
 				offlineServers++
@@ -199,80 +241,34 @@ func (r *elasticsearchRecordRepository) calculateUptimeStats(result searchResult
 		}
 	}
 
-	averageUptime := 0.0
-	if totalServers > 0 {
-		averageUptime = totalUptimePercentage / float64(totalServers)
-	}
+	uptimePercentage := totalOnlineTime / (float64(totalServers) * float64(req.EndDate.Sub(req.StartDate).Seconds())) * 100
 
 	return &server.UptimeStats{
 		TotalServers:     totalServers,
 		OnlineServers:    onlineServers,
 		OfflineServers:   offlineServers,
-		UptimePercentage: averageUptime,
-	}
+		UptimePercentage: uptimePercentage,
+	}, nil
 }
 
-// getIndexName tạo tên index theo ngày
-func (e *elasticRepository) getIndexName(timestamp time.Time) string {
-	return fmt.Sprintf("server-record-%s", timestamp.Format("2006-01-02"))
+func (r *elasticRepository) getIndexName(timestamp time.Time) string {
+	return fmt.Sprintf("server-status-%s", timestamp.Format("2006.01.02"))
 }
 
-// getIndexPattern tạo pattern để search trong nhiều index
-func (e *elasticRepository) getIndexPattern(from, to time.Time) string {
-	// Nếu cùng tháng, sử dụng pattern cụ thể
-	if from.Year() == to.Year() && from.Month() == to.Month() {
-		return fmt.Sprintf("server-record-%s*", from.Format("2006-01"))
-	}
-	// Nếu khác tháng, sử dụng pattern rộng hơn
-	return "server-record-*"
-}
+func (r *elasticRepository) getIndicesForTimeRange(startTime, endTime time.Time) []string {
+	var indices []string
+	current := startTime
 
-// createIndexTemplate tạo index template để định nghĩa mapping
-func (r *elasticsearchRecordRepository) createIndexTemplate(ctx context.Context) error {
-	template := map[string]interface{}{
-		"index_patterns": []string{"server-record-*"},
-		"template": map[string]interface{}{
-			"settings": map[string]interface{}{
-				"number_of_shards":   1,
-				"number_of_replicas": 0,
-				"refresh_interval":   "5s",
-			},
-			"mappings": map[string]interface{}{
-				"properties": map[string]interface{}{
-					"server_id": map[string]interface{}{
-						"type": "keyword",
-					},
-					"status": map[string]interface{}{
-						"type": "keyword",
-					},
-					"timestamp": map[string]interface{}{
-						"type":   "date",
-						"format": "strict_date_optional_time",
-					},
-				},
-			},
-		},
+	for current.Before(endTime) || current.Equal(endTime) {
+		indexName := fmt.Sprintf("server-status-%s", current.Format("2006.01.02"))
+		indices = append(indices, indexName)
+		current = current.AddDate(0, 0, 1) // Thêm 1 ngày
 	}
 
-	templateJSON, err := json.Marshal(template)
-	if err != nil {
-		return fmt.Errorf("failed to marshal template: %w", err)
+	if len(indices) == 0 {
+		// Fallback: sử dụng pattern để search tất cả indices
+		indices = []string{"server-status-*"}
 	}
 
-	req := esapi.IndicesPutIndexTemplateRequest{
-		Name: "server-record-template",
-		Body: bytes.NewReader(templateJSON),
-	}
-
-	res, err := req.Do(ctx, r.client)
-	if err != nil {
-		return fmt.Errorf("failed to create index template: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.IsError() {
-		return fmt.Errorf("Elasticsearch index template error: %s", res.String())
-	}
-
-	return nil
+	return indices
 }

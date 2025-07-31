@@ -23,7 +23,8 @@ type MonitorService struct {
 
 	serverChan chan *entity.Server
 
-	ticker *time.Ticker
+	ticker   *time.Ticker
+	interval time.Duration
 
 	buffer []*StatusRecord // Buffer để lưu server tạm thời
 
@@ -50,7 +51,8 @@ func NewMonitorService(
 		stopChan:   make(chan bool),
 		buffer:     make([]*StatusRecord, 0, ServerChannelSize), // Buffer size can be adjusted
 
-		ticker: time.NewTicker(interval), // Example interval
+		ticker:   time.NewTicker(interval), // Example interval
+		interval: interval,
 	}
 }
 
@@ -118,11 +120,20 @@ func (s *MonitorService) checkAllServers(ctx context.Context) error {
 			actualStatus = entity.StatusOffline // Default to offline if check fails
 		}
 
+		// Tính interval dựa trên status
+		var recordInterval time.Duration
+		if actualStatus == entity.StatusOnline {
+			recordInterval = s.interval // Sử dụng interval của ticker khi server ON
+		} else {
+			recordInterval = 0 // Interval = 0 khi server OFF
+		}
+
 		// 2. Tạo status record
 		record := &StatusRecord{
 			ServerID:  server.ID,
 			Status:    string(actualStatus),
 			Timestamp: time.Now(),
+			Interval:  recordInterval,
 		}
 
 		// 3. Update database nếu status thay đổi
