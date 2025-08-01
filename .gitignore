@@ -1,2 +1,4 @@
 infrastructure/database/postgres_data/
 infrastructure/redis/redis_data/
+infrastructure/elasticsearch/es_data/
+config/config.yaml

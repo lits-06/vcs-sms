@@ -15,7 +15,7 @@ type mailService struct {
 	logger logger.Logger
 }
 
-func NewMailService(cfg *config.SMTPConfig, log logger.Logger) *mailService {
+func NewMailService(cfg *config.SMTPConfig, log logger.Logger) MailService {
 	return &mailService{
 		config: cfg,
 		logger: log,
@@ -32,7 +32,7 @@ func (s *mailService) SendUptimeReport(stats *UptimeStats) error {
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", s.config.From)
-	m.SetHeader("To", s.config.AdminEmail)
+	m.SetHeader("To", s.config.AdminEmail...)
 	m.SetHeader("Subject", fmt.Sprintf("Server Uptime Report - %s to %s",
 		stats.StartDate.Format("2006-01-02"),
 		stats.EndDate.Format("2006-01-02")))

@@ -35,7 +35,6 @@ type StatusRecord struct {
 type UptimeRequest struct {
 	StartDate time.Time `json:"start_date" validate:"required"`
 	EndDate   time.Time `json:"end_date" validate:"required"`
-	Email     string    `json:"email" validate:"omitempty,email"`
 }
 
 // UptimeStats represents uptime statistics
@@ -72,6 +71,10 @@ type Provider interface {
 	GetServerStatus(ctx context.Context, serverID string) (entity.ServerStatus, error)
 }
 
+type UptimeService interface {
+	ReportStats(ctx context.Context, req *UptimeRequest) error
+}
+
 type MailService interface {
-	SendUptimeReport(ctx context.Context, email string, stats *UptimeStats) error
+	SendUptimeReport(stats *UptimeStats) error
 }

@@ -7,11 +7,13 @@ import (
 
 type Route struct {
 	serverHandler *handler.ServerHandler
+	reportHandler *handler.ReportHandler
 }
 
-func NewRoute(serverHandler *handler.ServerHandler) *Route {
+func NewRoute(serverHandler *handler.ServerHandler, reportHandler *handler.ReportHandler) *Route {
 	return &Route{
 		serverHandler: serverHandler,
+		reportHandler: reportHandler,
 	}
 }
 
@@ -69,6 +71,11 @@ func (r *Route) SetupRoutes() *gin.Engine {
 			// Import/Export operations
 			servers.POST("/import", r.serverHandler.ImportServersFromExcel)
 			servers.GET("/export", r.serverHandler.ExportServersToExcel)
+		}
+
+		reports := v1.Group("/reports")
+		{
+			reports.POST("/uptime", r.reportHandler.GenerateUptimeReport)
 		}
 	}
 

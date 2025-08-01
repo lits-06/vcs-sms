@@ -1,4 +1,4 @@
-version: '3.8'
+# version: '3.8'
 
 services:
   postgres:
@@ -46,5 +46,5 @@ services:
     ports:
       - "${ELASTICSEARCH_PORT}:9200"
     volumes:
-      - ./infrastructure/elasticsearch/data:/usr/share/elasticsearch/data
+      - ./infrastructure/elasticsearch/es_data:/usr/share/elasticsearch/data
       

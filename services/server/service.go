@@ -174,7 +174,7 @@ func (uc *ServerUsecase) ImportServersFromExcel(ctx context.Context, file multip
 
 	sheets := f.GetSheetList()
 	if len(sheets) == 0 {
-		return nil, fmt.Errorf("Excel file must contain at least one sheet")
+		return nil, fmt.Errorf("excel file must contain at least one sheet")
 	}
 
 	// Get all rows from Sheet1
@@ -184,7 +184,7 @@ func (uc *ServerUsecase) ImportServersFromExcel(ctx context.Context, file multip
 	}
 
 	if len(rows) < 2 {
-		return nil, fmt.Errorf("Excel file must contain at least headers and one data row")
+		return nil, fmt.Errorf("excel file must contain at least headers and one data row")
 	}
 
 	result := &ImportRespose{

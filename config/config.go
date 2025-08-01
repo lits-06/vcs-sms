@@ -63,16 +63,17 @@ type JWTConfig struct {
 }
 
 type SMTPConfig struct {
-	Host       string `mapstructure:"host" validate:"required"`
-	Port       int    `mapstructure:"port" validate:"required,min=1,max=65535"`
-	Username   string `mapstructure:"username" validate:"required"`
-	Password   string `mapstructure:"password" validate:"required"`
-	From       string `mapstructure:"from" validate:"required,email"`
-	AdminEmail string `mapstructure:"admin_email" validate:"required,email"`
+	Host       string   `mapstructure:"host" validate:"required"`
+	Port       int      `mapstructure:"port" validate:"required,min=1,max=65535"`
+	Username   string   `mapstructure:"username" validate:"required"`
+	Password   string   `mapstructure:"password" validate:"required"`
+	From       string   `mapstructure:"from" validate:"required,email"`
+	AdminEmail []string `mapstructure:"admin_email" validate:"required,email"`
 }
 
 type LoggingConfig struct {
 	Level       string `mapstructure:"level" validate:"required,oneof=debug info warn error"`
+	Folder      string `mapstructure:"folder" validate:"required"`
 	File        string `mapstructure:"file" validate:"required"`
 	MaxSize     int    `mapstructure:"max_size" validate:"min=1"`
 	MaxBackups  int    `mapstructure:"max_backups" validate:"min=0"`
@@ -97,6 +98,10 @@ func Load() (*Config, error) {
 	// Set up Viper
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
+
+	// Add config file paths
+	viper.AddConfigPath(".")         // Current directory
+	viper.AddConfigPath("./config")  // For config.yaml in config directory
 	viper.AddConfigPath("../config") // For when running from cmd directory
 	viper.AddConfigPath("../")       // For config.yaml in root directory
 

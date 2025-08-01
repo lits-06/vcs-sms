@@ -244,6 +244,8 @@ func (r *elasticRepository) GetUptimeStats(ctx context.Context, req *server.Upti
 	uptimePercentage := totalOnlineTime / (float64(totalServers) * float64(req.EndDate.Sub(req.StartDate).Seconds())) * 100
 
 	return &server.UptimeStats{
+		StartDate:        req.StartDate,
+		EndDate:          req.EndDate,
 		TotalServers:     totalServers,
 		OnlineServers:    onlineServers,
 		OfflineServers:   offlineServers,

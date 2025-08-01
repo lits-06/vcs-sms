@@ -14,11 +14,9 @@ type zapLogger struct {
 }
 
 func NewZapLogger(cfg *config.LoggingConfig) (*zapLogger, error) {
-	logDir := "../logs"
-
 	// Cấu hình log rotation
 	logRotator := &lumberjack.Logger{
-		Filename:   logDir + "/" + cfg.File,
+		Filename:   cfg.Folder + "/" + cfg.File,
 		MaxSize:    cfg.MaxSize,     // MB
 		MaxBackups: cfg.MaxBackups,  // số file backup
 		MaxAge:     cfg.MaxAge,      // ngày

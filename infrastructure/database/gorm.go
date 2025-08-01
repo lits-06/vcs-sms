@@ -13,14 +13,6 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-// AutoMigrate runs database migrations
-func AutoMigrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(&entity.Server{}); err != nil {
-		return fmt.Errorf("failed to auto migrate: %w", err)
-	}
-	return nil
-}
-
 func NewGormConnection(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 	// Configure GORM logger
 	gormConfig := &gorm.Config{
@@ -50,6 +42,10 @@ func NewGormConnection(cfg *config.DatabaseConfig) (*gorm.DB, error) {
 
 	if err := sqlDB.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
+	if err := db.AutoMigrate(&entity.Server{}); err != nil {
+		return nil, fmt.Errorf("failed to auto migrate: %w", err)
 	}
 
 	return db, nil

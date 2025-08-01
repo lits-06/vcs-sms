@@ -28,22 +28,24 @@ elasticsearch:
   port: 9200
   username: ""
   password: ""
-  index: server_logs
+  # index: server_logs
 
-jwt:
-  secret: your-very-secure-secret-key-here-at-least-32-chars-long
-  expiry: 24h
+# jwt:
+#   secret: your-very-secure-secret-key-here-at-least-32-chars-long
+#   expiry: 24h
 
 smtp:
   host: smtp.gmail.com
   port: 587
-  username: your-email@gmail.com
-  password: your-app-password
-  from: your-email@gmail.com
-  admin_email: admin@example.com
+  username: testelasticvcs@gmail.com
+  password: acbj mqad vggo wbf
+  from: testelasticvcs@gmail.com
+  admin_email:
+    - shiraishi2612@gmail.com
 
 log:
   level: debug
+  folder: ./logs
   file: sms_dev.log
   max_size: 1
   max_backups: 10
@@ -51,7 +53,7 @@ log:
   compression: true
 
 monitoring:
-  interval: 60s
+  interval: 5s
 
 app:
   environment: development
