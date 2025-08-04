@@ -105,6 +105,9 @@ func Load() (*Config, error) {
 	viper.AddConfigPath("../config") // For when running from cmd directory
 	viper.AddConfigPath("../")       // For config.yaml in root directory
 
+	viper.AddConfigPath("../../config") // For config.yaml in parent directory
+	viper.AddConfigPath("../../")       // For config.yaml in grandparent directory
+
 	// Read config file (optional)
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {

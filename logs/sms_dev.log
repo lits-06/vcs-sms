@@ -5,3 +5,163 @@
 {"level":"info","timestamp":"2025-08-01T17:28:32.223+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
 {"level":"info","timestamp":"2025-08-01T17:28:32.223+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
 {"level":"info","timestamp":"2025-08-01T17:28:32.228+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T10:19:31.634+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:19:31.635+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T10:20:07.921+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"srv-6325"}
+{"level":"info","timestamp":"2025-08-04T10:20:07.921+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-2897"}
+{"level":"info","timestamp":"2025-08-04T10:20:07.930+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-4843"}
+{"level":"info","timestamp":"2025-08-04T10:20:08.129+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-3130"}
+{"level":"info","timestamp":"2025-08-04T10:20:08.135+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-2624"}
+{"level":"info","timestamp":"2025-08-04T10:20:08.140+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-6705"}
+{"level":"info","timestamp":"2025-08-04T10:20:08.147+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-2916"}
+{"level":"info","timestamp":"2025-08-04T10:20:08.149+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-5015"}
+{"level":"info","timestamp":"2025-08-04T10:20:08.158+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-6980"}
+{"level":"info","timestamp":"2025-08-04T10:20:08.351+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-3627"}
+{"level":"info","timestamp":"2025-08-04T10:20:48.500+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T10:20:48.500+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:20:48.502+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:20:48.503+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:20:48.514+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T10:44:43.721+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:44:43.721+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T10:44:50.626+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-4747"}
+{"level":"info","timestamp":"2025-08-04T10:44:50.635+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-3947"}
+{"level":"info","timestamp":"2025-08-04T10:44:50.848+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-4017"}
+{"level":"info","timestamp":"2025-08-04T10:44:50.849+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-1170"}
+{"level":"info","timestamp":"2025-08-04T10:44:50.854+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-0125"}
+{"level":"info","timestamp":"2025-08-04T10:44:50.864+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-0982"}
+{"level":"info","timestamp":"2025-08-04T10:44:50.873+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-7284"}
+{"level":"info","timestamp":"2025-08-04T10:44:51.068+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-3355"}
+{"level":"info","timestamp":"2025-08-04T10:44:51.070+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-2034"}
+{"level":"info","timestamp":"2025-08-04T10:44:51.085+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-0592"}
+{"level":"info","timestamp":"2025-08-04T10:47:19.804+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T10:47:19.805+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:47:19.805+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:47:19.806+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:47:19.807+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T10:47:36.898+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:47:36.898+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.250+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-4789"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.259+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"srv-8729"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.261+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-6934"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.262+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-0750"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.267+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-0454"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.268+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-8707"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.274+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-4141"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.477+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-5588"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.482+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-8860"}
+{"level":"info","timestamp":"2025-08-04T10:47:42.485+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-2067"}
+{"level":"info","timestamp":"2025-08-04T10:48:59.311+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T10:48:59.312+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:48:59.312+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:48:59.312+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:48:59.314+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T10:50:53.348+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:50:53.348+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.391+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-4725"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.393+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-8044"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.399+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-7949"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.408+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-4479"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.595+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-0227"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.599+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-3963"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.601+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-5749"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.616+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-8749"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.817+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-3794"}
+{"level":"info","timestamp":"2025-08-04T10:50:57.817+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-3759"}
+{"level":"info","timestamp":"2025-08-04T10:51:51.564+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T10:51:51.565+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:51:51.565+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:51:51.565+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:51:51.566+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T10:58:11.096+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T10:58:11.096+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.432+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-7982"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.629+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-1079"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.638+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"srv-5998"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.650+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-0660"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.650+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-1675"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.857+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"srv-6822"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.868+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-9204"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.870+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-4458"}
+{"level":"info","timestamp":"2025-08-04T10:58:14.878+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-2603"}
+{"level":"info","timestamp":"2025-08-04T10:58:15.074+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"srv-4872"}
+{"level":"info","timestamp":"2025-08-04T11:06:12.589+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T11:06:12.590+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:06:12.590+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:06:12.590+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:06:12.592+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T11:09:42.644+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:09:42.644+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T11:10:29.533+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T11:10:29.533+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:10:29.533+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:10:29.534+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:10:29.534+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T11:10:40.309+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:10:40.309+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.520+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-9699"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.525+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-6586"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.531+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-6420"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.536+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-7267"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.538+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"srv-1663"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.543+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-3200"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.544+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-4517"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.550+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-1714"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.550+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-2270"}
+{"level":"info","timestamp":"2025-08-04T11:10:55.745+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-3637"}
+{"level":"info","timestamp":"2025-08-04T11:13:07.637+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T11:13:07.637+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:13:07.638+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:13:07.638+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T11:13:07.641+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T17:03:28.324+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:03:28.324+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T17:03:33.988+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"srv-7690"}
+{"level":"info","timestamp":"2025-08-04T17:03:33.994+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-6073"}
+{"level":"info","timestamp":"2025-08-04T17:03:34.000+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-5350"}
+{"level":"info","timestamp":"2025-08-04T17:03:34.003+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-0702"}
+{"level":"info","timestamp":"2025-08-04T17:03:34.007+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-1583"}
+{"level":"info","timestamp":"2025-08-04T17:03:34.203+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"srv-2793"}
+{"level":"info","timestamp":"2025-08-04T17:03:34.221+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-2991"}
+{"level":"info","timestamp":"2025-08-04T17:03:34.223+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-8299"}
+{"level":"info","timestamp":"2025-08-04T17:03:34.228+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-0535"}
+{"level":"info","timestamp":"2025-08-04T17:03:34.433+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-3530"}
+{"level":"info","timestamp":"2025-08-04T17:05:39.713+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T17:05:39.714+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:05:39.714+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:05:39.714+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:05:39.717+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T17:06:01.819+0700","caller":"server/monitor.go:60","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:06:01.819+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.426+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-2270"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.432+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-9342"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.434+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-3661"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.437+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-0031"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.441+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-9161"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.647+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"file-7556"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.648+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-2831"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.649+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-1549"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.654+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"cache-7403"}
+{"level":"info","timestamp":"2025-08-04T17:06:04.654+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-3148"}
+{"level":"info","timestamp":"2025-08-04T17:06:37.695+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T17:06:37.696+0700","caller":"server/monitor.go:93","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:06:37.696+0700","caller":"server/monitor.go:82","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:06:37.696+0700","caller":"server/monitor.go:97","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:06:37.699+0700","caller":"cmd/main.go:98","message":"Server exited"}
+{"level":"info","timestamp":"2025-08-04T17:08:55.342+0700","caller":"server/monitor.go:61","message":"Starting monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:08:55.342+0700","caller":"cmd/main.go:79","message":"Server starting","address":":8080"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.144+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-5876"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.145+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-6776"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.147+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-0331"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.156+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"api-8940"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.159+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-1156"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.166+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-4761"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.359+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"lb-2201"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.363+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"db-1125"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.376+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"web-4190"}
+{"level":"info","timestamp":"2025-08-04T17:09:05.572+0700","caller":"handler/server.go:40","message":"Server created successfully","handler":"server","server_id":"mail-3374"}
+{"level":"info","timestamp":"2025-08-04T17:09:47.948+0700","caller":"cmd/main.go:92","message":"Shutting down server..."}
+{"level":"info","timestamp":"2025-08-04T17:09:47.949+0700","caller":"server/monitor.go:94","message":"Stopping monitoring service","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:09:47.949+0700","caller":"server/monitor.go:83","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:09:47.949+0700","caller":"server/monitor.go:98","message":"Monitoring service stopped","service":"monitor"}
+{"level":"info","timestamp":"2025-08-04T17:09:47.951+0700","caller":"cmd/main.go:98","message":"Server exited"}

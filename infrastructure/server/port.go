@@ -42,55 +42,6 @@ func NewPortServerProvider(redisClient *redis.Client) *PortServerProvider {
 	return p
 }
 
-// // startStatusReporting starts periodic status reporting every 10 seconds
-// func (p *PortServerProvider) startStatusReporting() {
-// 	p.statusTicker = time.NewTicker(10 * time.Second)
-
-// 	go func() {
-// 		for {
-// 			select {
-// 			case <-p.statusTicker.C:
-// 				p.reportAllServerStatus()
-// 			case <-p.stopChan:
-// 				return
-// 			}
-// 		}
-// 	}()
-// }
-
-// // reportAllServerStatus reports status of all managed servers
-// func (p *PortServerProvider) reportAllServerStatus() {
-// 	ctx := context.Background()
-
-// 	// Get all server keys from Redis
-// 	keys, err := p.redisClient.Keys(ctx, "server:*").Result()
-// 	if err != nil {
-// 		fmt.Printf("Failed to get server keys from Redis: %v\n", err)
-// 		return
-// 	}
-
-// 	for _, key := range keys {
-// 		serverData, err := p.redisClient.Get(ctx, key).Result()
-// 		if err != nil {
-// 			continue
-// 		}
-
-// 		var process ServerProcess
-// 		if err := json.Unmarshal([]byte(serverData), &process); err != nil {
-// 			continue
-// 		}
-
-// 		// Check current health status
-// 		currentStatus := p.checkServerHealth(&process)
-
-// 		// Update status if changed
-// 		if currentStatus != process.Status {
-// 			process.Status = currentStatus
-// 			p.saveServerProcess(ctx, &process)
-// 		}
-// 	}
-// }
-
 // CreateServer creates a new server by automatically finding an available port
 func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Server) error {
 	// Check if server already exists
@@ -111,6 +62,9 @@ func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Se
 		Port:     availablePort,
 		Status:   entity.StatusOffline,
 	}
+
+	fmt.Println(process)
+	fmt.Println(server.Status)
 
 	// Save to Redis
 	if err := p.saveServerProcess(ctx, process); err != nil {
@@ -208,7 +162,7 @@ func (p *PortServerProvider) StartServer(ctx context.Context, serverID string) e
 	process.Status = entity.StatusOnline
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := server.ListenAndServe(); err != nil {
 			fmt.Printf("Failed to start server %s: %v\n", serverID, err)
 			process.Status = entity.StatusOffline
 			process.HTTPServer = nil
@@ -346,40 +300,7 @@ func (p *PortServerProvider) findAvailablePort() (int, error) {
 	addr := listener.Addr().(*net.TCPAddr)
 	port := addr.Port
 
-	// Ensure port is after 8000 (main program port)
-	if port <= 8000 {
-		// If OS assigned port <= 8000, try to find a port manually starting from 8001
-		return p.findPortStartingFrom(8001)
-	}
-
 	return port, nil
-}
-
-// findPortStartingFrom finds available port starting from specified port (fallback method)
-func (p *PortServerProvider) findPortStartingFrom(startPort int) (int, error) {
-	// Only check a reasonable range to avoid infinite loops
-	maxAttempts := 100
-	for i := 0; i < maxAttempts; i++ {
-		port := startPort + i
-		if port > 65535 {
-			break
-		}
-
-		if !p.isPortInUse(port) {
-			return port, nil
-		}
-	}
-	return 0, fmt.Errorf("no available ports found after %d attempts starting from port %d", maxAttempts, startPort)
-}
-
-// isPortInUse checks if a port is currently in use on localhost
-func (p *PortServerProvider) isPortInUse(port int) bool {
-	conn, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", port))
-	if err != nil {
-		return true // Port is in use
-	}
-	conn.Close()
-	return false // Port is available
 }
 
 // Close stops the status reporting and cleans up resources

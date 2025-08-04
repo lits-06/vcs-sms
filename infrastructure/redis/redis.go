@@ -13,7 +13,8 @@ import (
 
 const (
 	// Cache keys
-	ServerKey = "server:%s" // server:{id}
+	ServerKey        = "server:%s"         // server:{id}
+	ServerProcessKey = "server_process:%s" // server_process:{id}
 )
 
 func NewRedisClient(cfg *config.RedisConfig) (*redis.Client, error) {
