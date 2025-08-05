@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -13,12 +14,14 @@ import (
 
 type ServerUsecase struct {
 	serverRepo     Repository
+	cacheRepo      CacheRepository
 	serverProvider Provider
 }
 
-func NewServerUsecase(serverRepo Repository, serverProvider Provider) *ServerUsecase {
+func NewServerUsecase(serverRepo Repository, cacheRepo CacheRepository, serverProvider Provider) *ServerUsecase {
 	return &ServerUsecase{
 		serverRepo:     serverRepo,
+		cacheRepo:      cacheRepo,
 		serverProvider: serverProvider,
 	}
 }
@@ -52,16 +55,58 @@ func (uc *ServerUsecase) CreateServer(ctx context.Context, req CreateServerReque
 		IPv4:      req.IPv4,
 	}
 
+	// Transaction pattern với rollback
+	var (
+		providerCreated = false
+		dbCreated       = false
+		cacheCreated    = false
+	)
+
+	// Rollback function
+	defer func() {
+		if !providerCreated || !dbCreated || !cacheCreated {
+			// Rollback provider
+			if providerCreated {
+				if rollbackErr := uc.serverProvider.DeleteServer(ctx, server.ID); rollbackErr != nil {
+					// Log error nhưng không fail toàn bộ transaction
+					fmt.Printf("Failed to rollback provider for server %s: %v\n", server.ID, rollbackErr)
+				}
+			}
+
+			// Rollback database
+			if dbCreated {
+				if rollbackErr := uc.serverRepo.Delete(ctx, server.ID); rollbackErr != nil {
+					fmt.Printf("Failed to rollback database for server %s: %v\n", server.ID, rollbackErr)
+				}
+			}
+
+			// Rollback cache
+			if cacheCreated {
+				if rollbackErr := uc.cacheRepo.DeleteServer(ctx, server.ID); rollbackErr != nil {
+					fmt.Printf("Failed to rollback cache for server %s: %v\n", server.ID, rollbackErr)
+				}
+			}
+		}
+	}()
+
 	err = uc.serverProvider.CreateServer(ctx, server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create server: %w", err)
 	}
+	providerCreated = true
 
 	// Save to database
 	err = uc.serverRepo.Create(ctx, server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create server: %w", err)
 	}
+	dbCreated = true
+
+	err = uc.cacheRepo.SetServer(ctx, server.ID, server)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save server to cache: %w", err)
+	}
+	cacheCreated = true
 
 	return server, nil
 }
@@ -129,6 +174,11 @@ func (uc *ServerUsecase) UpdateServer(ctx context.Context, req UpdateServerReque
 		return fmt.Errorf("failed to update server: %w", err)
 	}
 
+	err = uc.cacheRepo.SetServer(ctx, server.ID, server)
+	if err != nil {
+		return fmt.Errorf("failed to update server in cache: %w", err)
+	}
+
 	return nil
 }
 
@@ -155,6 +205,11 @@ func (uc *ServerUsecase) DeleteServer(ctx context.Context, serverID string) erro
 	err = uc.serverRepo.Delete(ctx, serverID)
 	if err != nil {
 		return fmt.Errorf("failed to delete server: %w", err)
+	}
+
+	err = uc.cacheRepo.DeleteServer(ctx, serverID)
+	if err != nil {
+		return fmt.Errorf("failed to delete server from cache: %w", err)
 	}
 
 	return nil
@@ -289,10 +344,24 @@ func (uc *ServerUsecase) ExportServersToExcel(ctx context.Context, req QueryServ
 		f.SetCellValue("Sheet1", fmt.Sprintf("F%d", row), server.UpdatedAt.Format("2006-01-02 15:04:05"))
 	}
 
+	// Tìm project root (thư mục chứa go.mod)
+	projectRoot, err := findProjectRoot()
+	if err != nil {
+		return fmt.Errorf("failed to find project root: %w", err)
+	}
+
+	// Tạo đường dẫn exports từ project root
+	exportDir := filepath.Join(projectRoot, "exports")
+
+	// Tạo thư mục nếu chưa tồn tại
+	if err := os.MkdirAll(exportDir, 0755); err != nil {
+		return fmt.Errorf("failed to create exports directory: %w", err)
+	}
+
 	// Create filename with timestamp
 	filename := fmt.Sprintf("servers_export_%s.xlsx", time.Now().Format("20060102_150405"))
 
-	path := filepath.Join("../../exports", filename)
+	path := filepath.Join(exportDir, filename)
 
 	// Save the file
 	if err := f.SaveAs(path); err != nil {
@@ -300,4 +369,28 @@ func (uc *ServerUsecase) ExportServersToExcel(ctx context.Context, req QueryServ
 	}
 
 	return nil
+}
+
+// Helper function để tìm project root
+func findProjectRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		// Kiểm tra xem có go.mod file không
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Đã đến root của filesystem
+			break
+		}
+		dir = parent
+	}
+
+	return "", fmt.Errorf("go.mod not found")
 }

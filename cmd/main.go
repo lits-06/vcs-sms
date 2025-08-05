@@ -51,7 +51,7 @@ func main() {
 
 	serverProvider := infraServer.NewPortServerProvider(redisClient)
 
-	serverUsecase := server.NewServerUsecase(serverRepo, serverProvider)
+	serverUsecase := server.NewServerUsecase(serverRepo, cacheRepo, serverProvider)
 	emailService := server.NewMailService(&cfg.SMTP, appLogger)
 	reportService := server.NewUptimeService(recordRepo, emailService, appLogger)
 	monitorService := server.NewMonitorService(

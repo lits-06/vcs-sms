@@ -6,33 +6,40 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/lits-06/vcs-sms/entity"
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	ServerProcessKey = "server_process:%s"
+)
+
 // PortServerProvider implements ServerProvider interface
 // This provider manages servers by starting/stopping services on specific ports
 type PortServerProvider struct {
 	redisClient *redis.Client
+	httpServer  map[string]*http.Server // In-memory map of running servers
+	mu          sync.RWMutex            // Mutex to protect access to httpServer
 	// statusTicker *time.Ticker
 	// stopChan     chan bool
 }
 
 // ServerProcess represents a running server process
 type ServerProcess struct {
-	ServerID   string              `json:"server_id"`
-	Host       string              `json:"host"`
-	Port       int                 `json:"port"`
-	HTTPServer *http.Server        `json:"-"`
-	Status     entity.ServerStatus `json:"status"`
+	ServerID string              `json:"server_id"`
+	Host     string              `json:"host"`
+	Port     int                 `json:"port"`
+	Status   entity.ServerStatus `json:"status"`
 }
 
 // NewPortServerProvider creates a new PortServerProvider
 func NewPortServerProvider(redisClient *redis.Client) *PortServerProvider {
 	p := &PortServerProvider{
 		redisClient: redisClient,
+		httpServer:  make(map[string]*http.Server),
 		// stopChan:    make(chan bool),
 	}
 
@@ -63,9 +70,6 @@ func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Se
 		Status:   entity.StatusOffline,
 	}
 
-	fmt.Println(process)
-	fmt.Println(server.Status)
-
 	// Save to Redis
 	if err := p.saveServerProcess(ctx, process); err != nil {
 		return fmt.Errorf("failed to save server process: %w", err)
@@ -75,12 +79,6 @@ func (p *PortServerProvider) CreateServer(ctx context.Context, server *entity.Se
 		// If server is online, start it immediately
 		if err := p.StartServer(ctx, server.ID); err != nil {
 			return fmt.Errorf("failed to start server %s: %w", server.ID, err)
-		}
-	} else {
-		// If server is offline, just save the initial status
-		process.Status = server.Status
-		if err := p.saveServerProcess(ctx, process); err != nil {
-			return fmt.Errorf("failed to save initial server status: %w", err)
 		}
 	}
 
@@ -111,19 +109,10 @@ func (p *PortServerProvider) UpdateServer(ctx context.Context, server *entity.Se
 
 // DeleteServer stops and removes a server
 func (p *PortServerProvider) DeleteServer(ctx context.Context, serverID string) error {
-	process, err := p.getServerProcess(ctx, serverID)
-	if err != nil {
-		return fmt.Errorf("server %s not found: %w", serverID, err)
-	}
+	p.forceStopServer(serverID)
 
-	// Stop the server if it's running
-	if process.HTTPServer != nil {
-		if err := process.HTTPServer.Shutdown(ctx); err != nil {
-			fmt.Printf("Failed to shutdown server %s gracefully: %v\n", serverID, err)
-		}
-	}
-
-	if err := p.redisClient.Del(ctx, "server:"+serverID).Err(); err != nil {
+	key := fmt.Sprintf(ServerProcessKey, serverID)
+	if err := p.redisClient.Del(ctx, key).Err(); err != nil {
 		return fmt.Errorf("failed to delete server from Redis: %w", err)
 	}
 
@@ -137,13 +126,16 @@ func (p *PortServerProvider) StartServer(ctx context.Context, serverID string) e
 		return fmt.Errorf("server %s not found: %w", serverID, err)
 	}
 
-	if process.HTTPServer != nil {
-		actualStatus := p.checkServerHealth(process)
-		if actualStatus == entity.StatusOnline {
+	p.mu.RLock()
+	httpServer, exists := p.httpServer[serverID]
+	p.mu.RUnlock()
+
+	if exists && httpServer != nil {
+		if p.checkServerHealth(process) == entity.StatusOnline {
 			return nil // Server is already running and healthy
 		}
 		// Server object exists but not healthy, need to restart
-		p.forceStopServer(process)
+		p.forceStopServer(serverID)
 	}
 
 	// Create a simple HTTP server
@@ -158,14 +150,20 @@ func (p *PortServerProvider) StartServer(ctx context.Context, serverID string) e
 		Handler: mux,
 	}
 
-	process.HTTPServer = server
-	process.Status = entity.StatusOnline
+	p.mu.Lock()
+	p.httpServer[serverID] = server
+	p.mu.Unlock()
+	// process.Status = entity.StatusOnline
 
 	go func() {
-		if err := server.ListenAndServe(); err != nil {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("Failed to start server %s: %v\n", serverID, err)
+
+			p.mu.Lock()
+			delete(p.httpServer, serverID) // Remove from map if failed
+			p.mu.Unlock()
+
 			process.Status = entity.StatusOffline
-			process.HTTPServer = nil
 			p.saveServerProcess(ctx, process)
 		}
 	}()
@@ -174,10 +172,9 @@ func (p *PortServerProvider) StartServer(ctx context.Context, serverID string) e
 	time.Sleep(200 * time.Millisecond)
 
 	// Verify server is actually running
-	actualStatus := p.checkServerHealth(process)
-	if actualStatus != entity.StatusOnline {
+	if p.checkServerHealth(process) != entity.StatusOnline {
+		p.forceStopServer(serverID)
 		process.Status = entity.StatusOffline
-		process.HTTPServer = nil
 		if err := p.saveServerProcess(ctx, process); err != nil {
 			return fmt.Errorf("failed to save server process after start failure: %w", err)
 		}
@@ -185,6 +182,7 @@ func (p *PortServerProvider) StartServer(ctx context.Context, serverID string) e
 	}
 
 	// Save updated process
+	process.Status = entity.StatusOnline
 	if err := p.saveServerProcess(ctx, process); err != nil {
 		return fmt.Errorf("failed to save server process: %w", err)
 	}
@@ -199,14 +197,13 @@ func (p *PortServerProvider) StopServer(ctx context.Context, serverID string) er
 		return fmt.Errorf("server %s not found: %w", serverID, err)
 	}
 
-	if process.HTTPServer == nil && process.Status == entity.StatusOffline {
-		return nil
+	// Force stop the server
+	p.forceStopServer(serverID)
+
+	if process.Status == entity.StatusOffline {
+		return nil // Already stopped
 	}
 
-	// Force stop the server
-	p.forceStopServer(process)
-
-	process.HTTPServer = nil
 	process.Status = entity.StatusOffline
 
 	// Save updated process
@@ -231,6 +228,12 @@ func (p *PortServerProvider) GetServerStatus(ctx context.Context, serverID strin
 	if actualStatus != process.Status {
 		process.Status = actualStatus
 		p.saveServerProcess(ctx, process)
+
+		if actualStatus == entity.StatusOffline {
+			p.mu.Lock()
+			delete(p.httpServer, serverID)
+			p.mu.Unlock()
+		}
 	}
 
 	return actualStatus, nil
@@ -238,8 +241,12 @@ func (p *PortServerProvider) GetServerStatus(ctx context.Context, serverID strin
 
 // checkServerHealth makes HTTP request to server to check if it's healthy
 func (p *PortServerProvider) checkServerHealth(serverProcess *ServerProcess) entity.ServerStatus {
-	if serverProcess.HTTPServer == nil {
-		return entity.StatusOffline
+	p.mu.RLock()
+	httpServer, exists := p.httpServer[serverProcess.ServerID]
+	p.mu.RUnlock()
+
+	if !exists || httpServer == nil {
+		return entity.StatusOffline // Server not running
 	}
 
 	client := &http.Client{Timeout: 2 * time.Second}
@@ -263,12 +270,14 @@ func (p *PortServerProvider) saveServerProcess(ctx context.Context, process *Ser
 		return err
 	}
 
-	return p.redisClient.Set(ctx, "server:"+process.ServerID, data, 0).Err()
+	key := fmt.Sprintf(ServerProcessKey, process.ServerID)
+	return p.redisClient.Set(ctx, key, data, 0).Err()
 }
 
 // getServerProcess retrieves server process from Redis
 func (p *PortServerProvider) getServerProcess(ctx context.Context, serverID string) (*ServerProcess, error) {
-	data, err := p.redisClient.Get(ctx, "server:"+serverID).Result()
+	key := fmt.Sprintf(ServerProcessKey, serverID)
+	data, err := p.redisClient.Get(ctx, key).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +292,8 @@ func (p *PortServerProvider) getServerProcess(ctx context.Context, serverID stri
 
 // serverExists checks if server exists in Redis
 func (p *PortServerProvider) serverExists(ctx context.Context, serverID string) bool {
-	exists, err := p.redisClient.Exists(ctx, "server:"+serverID).Result()
+	key := fmt.Sprintf(ServerProcessKey, serverID)
+	exists, err := p.redisClient.Exists(ctx, key).Result()
 	return err == nil && exists > 0
 }
 
@@ -312,8 +322,12 @@ func (p *PortServerProvider) findAvailablePort() (int, error) {
 // }
 
 // forceStopServer forcefully stops a server without updating Redis
-func (p *PortServerProvider) forceStopServer(process *ServerProcess) {
-	if process.HTTPServer == nil {
+func (p *PortServerProvider) forceStopServer(serverID string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	httpServer, exists := p.httpServer[serverID]
+	if !exists || httpServer == nil {
 		return
 	}
 
@@ -321,9 +335,11 @@ func (p *PortServerProvider) forceStopServer(process *ServerProcess) {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	if err := process.HTTPServer.Shutdown(shutdownCtx); err != nil {
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		// If graceful shutdown fails, try to close forcefully
-		fmt.Printf("Graceful shutdown failed for server %s, forcing close: %v\n", process.ServerID, err)
-		process.HTTPServer.Close()
+		fmt.Printf("Graceful shutdown failed for server %s, forcing close: %v\n", serverID, err)
+		httpServer.Close()
 	}
+
+	delete(p.httpServer, serverID)
 }

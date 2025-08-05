@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -157,6 +156,13 @@ func (s *MonitorService) checkAllServers(ctx context.Context) error {
 					"error", err,
 				)
 			}
+
+			if err := s.provider.UpdateServer(ctx, &updatedServer); err != nil {
+				s.logger.Warn("Failed to update server status in provider",
+					"server_id", server.ID,
+					"error", err,
+				)
+			}
 		}
 
 		s.buffer = append(s.buffer, record)
@@ -167,8 +173,7 @@ func (s *MonitorService) checkAllServers(ctx context.Context) error {
 
 func (s *MonitorService) getAllServers(ctx context.Context) (*[]entity.Server, error) {
 	cacheServers, err := s.cacheRepo.GetServerList(ctx)
-	if err != nil && cacheServers != nil {
-		fmt.Println("Get from cache")
+	if err == nil && cacheServers != nil && len(*cacheServers) > 0 {
 		return cacheServers, nil
 	}
 
@@ -177,9 +182,10 @@ func (s *MonitorService) getAllServers(ctx context.Context) (*[]entity.Server, e
 		return nil, err
 	}
 
-	fmt.Println("Get from database")
-	if err := s.cacheRepo.SetServerList(ctx, servers); err != nil {
-		s.logger.Warn("Failed to set server list in cache", "error", err)
+	if servers == nil || len(*servers) > 0 {
+		if err := s.cacheRepo.SetServerList(ctx, servers); err != nil {
+			s.logger.Warn("Failed to set server list in cache", "error", err)
+		}
 	}
 
 	return servers, nil
