@@ -39,7 +39,7 @@ func generateRandomUptimeRequest() server.UptimeRequest {
 	// daysDuration := rand.Intn(daysBack) + 1 // ít nhất 1 ngày
 	// endDate := startDate.AddDate(0, 0, daysDuration)
 
-	startDate := now
+	startDate := now.Add(-10 * time.Minute) // 10 phút trước
 	endDate := now
 
 	// Đảm bảo end date không vượt quá hôm nay

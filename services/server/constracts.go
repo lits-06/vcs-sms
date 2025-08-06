@@ -13,7 +13,7 @@ type UseCase interface {
 	UpdateServer(ctx context.Context, req UpdateServerRequest) error
 	DeleteServer(ctx context.Context, serverID string) error
 
-	ImportServersFromExcel(ctx context.Context, file multipart.File) (*ImportRespose, error)
+	ImportServersFromExcel(ctx context.Context, file multipart.File) (*ImportResponse, error)
 	ExportServersToExcel(ctx context.Context, req QueryServerRequest) error
 }
 
@@ -69,7 +69,7 @@ type UpdateServerRequest struct {
 	Status entity.ServerStatus `json:"status,omitempty" validate:"omitempty,oneof=ON OFF"`
 }
 
-type ImportRespose struct {
+type ImportResponse struct {
 	SuccessCount   int
 	FailureCount   int
 	SuccessServers []string // format: "ID:Name"

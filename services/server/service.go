@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/lits-06/vcs-sms/entity"
+	"github.com/lits-06/vcs-sms/pkg/utils"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -215,7 +216,7 @@ func (uc *ServerUsecase) DeleteServer(ctx context.Context, serverID string) erro
 	return nil
 }
 
-func (uc *ServerUsecase) ImportServersFromExcel(ctx context.Context, file multipart.File) (*ImportRespose, error) {
+func (uc *ServerUsecase) ImportServersFromExcel(ctx context.Context, file multipart.File) (*ImportResponse, error) {
 	// Open Excel file
 	f, err := excelize.OpenReader(file)
 	if err != nil {
@@ -242,7 +243,7 @@ func (uc *ServerUsecase) ImportServersFromExcel(ctx context.Context, file multip
 		return nil, fmt.Errorf("excel file must contain at least headers and one data row")
 	}
 
-	result := &ImportRespose{
+	result := &ImportResponse{
 		SuccessServers: make([]string, 0),
 		FailureServers: make([]string, 0),
 	}
@@ -345,7 +346,7 @@ func (uc *ServerUsecase) ExportServersToExcel(ctx context.Context, req QueryServ
 	}
 
 	// Tìm project root (thư mục chứa go.mod)
-	projectRoot, err := findProjectRoot()
+	projectRoot, err := utils.FindProjectRoot()
 	if err != nil {
 		return fmt.Errorf("failed to find project root: %w", err)
 	}
@@ -369,28 +370,4 @@ func (uc *ServerUsecase) ExportServersToExcel(ctx context.Context, req QueryServ
 	}
 
 	return nil
-}
-
-// Helper function để tìm project root
-func findProjectRoot() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		// Kiểm tra xem có go.mod file không
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir, nil
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			// Đã đến root của filesystem
-			break
-		}
-		dir = parent
-	}
-
-	return "", fmt.Errorf("go.mod not found")
 }

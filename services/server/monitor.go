@@ -52,7 +52,7 @@ func NewMonitorService(
 		buffer:     make([]*StatusRecord, 0, ServerChannelSize), // Buffer size can be adjusted
 
 		ticker:   time.NewTicker(interval), // Example interval
-		interval: interval,
+		interval: time.Duration(interval.Seconds()),
 	}
 }
 
