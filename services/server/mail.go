@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"path/filepath"
+	"time"
 
 	"github.com/lits-06/vcs-sms/config"
 	"github.com/lits-06/vcs-sms/pkg/logger"
@@ -36,8 +37,8 @@ func (s *mailService) SendUptimeReport(stats *UptimeStats) error {
 	m.SetHeader("From", s.config.From)
 	m.SetHeader("To", s.config.AdminEmail...)
 	m.SetHeader("Subject", fmt.Sprintf("Server Uptime Report - %s to %s",
-		stats.StartDate.Format("2006-01-02"),
-		stats.EndDate.Format("2006-01-02")))
+		stats.StartDate.Format(time.DateTime),
+		stats.EndDate.Format(time.DateTime)))
 	m.SetBody("text/html", htmlBody)
 
 	d := gomail.NewDialer(s.config.Host, s.config.Port, s.config.Username, s.config.Password)

@@ -216,15 +216,10 @@ func (r *elasticRepository) GetUptimeStats(ctx context.Context, req *server.Upti
 		return nil, fmt.Errorf("Elasticsearch search error: %s", res.String())
 	}
 
-	fmt.Println(res)
-	fmt.Println(res.Body)
-
 	var result SearchResult
 	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-
-	fmt.Println(result)
 
 	totalServers := len(result.Aggregations.Servers.Buckets)
 	onlineServers := 0

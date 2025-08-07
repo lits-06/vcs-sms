@@ -18,27 +18,34 @@ import (
 
 func deleteElasticsearchData() error {
 	today := time.Now().Format("2006.01.02")
-	url := "http://localhost:9200/server-status-" + today
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006.01.02")
 
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		return err
-	}
-
-	// Nếu có auth: req.SetBasicAuth("elastic", "your-password")
+	dates := []string{today, yesterday}
 
 	client := http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+	for _, date := range dates {
+		url := "http://localhost:9200/server-status-" + date
 
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("failed to delete index: %s", resp.Status)
+		req, err := http.NewRequest("DELETE", url, nil)
+		if err != nil {
+			log.Printf("❌ Lỗi tạo request cho ngày %s: %v", date, err)
+			continue
+		}
+
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("❌ Lỗi xóa index ngày %s: %v", date, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 400 && resp.StatusCode != 404 {
+			log.Printf("❌ Lỗi xóa index ngày %s: %s", date, resp.Status)
+		} else {
+			fmt.Printf("✅ Đã xóa index Elasticsearch ngày %s\n", date)
+		}
 	}
 
-	fmt.Println("✅ Đã xóa index Elasticsearch")
 	return nil
 }
 

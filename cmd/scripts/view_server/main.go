@@ -323,9 +323,9 @@ func generateRandomParams() url.Values {
 		if *verbose {
 			fmt.Printf("🎯 Using specified status: %s\n", filterStatus)
 		}
-	} else {
-		filterStatus = filterStatuses[rand.Intn(len(filterStatuses))]
-	}
+	} // else {
+	// 	filterStatus = filterStatuses[rand.Intn(len(filterStatuses))]
+	// }
 
 	if filterStatus != "" {
 		params.Add("status", filterStatus)

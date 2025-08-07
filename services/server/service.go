@@ -257,8 +257,9 @@ func (uc *ServerUsecase) ImportServersFromExcel(ctx context.Context, file multip
 		serverID := row[0]
 		serverName := row[1]
 		serverIPv4 := row[2]
+		status := row[3]
 
-		if serverID == "" || serverName == "" || serverIPv4 == "" {
+		if serverID == "" || serverName == "" || serverIPv4 == "" || status == "" {
 			result.FailureCount++
 			result.FailureServers = append(result.FailureServers, fmt.Sprintf("%s:%s - missing required fields", serverID, serverName))
 			continue
@@ -292,9 +293,10 @@ func (uc *ServerUsecase) ImportServersFromExcel(ctx context.Context, file multip
 
 		// Create server request
 		req := CreateServerRequest{
-			ID:   serverID,
-			Name: serverName,
-			IPv4: serverIPv4,
+			ID:     serverID,
+			Name:   serverName,
+			IPv4:   serverIPv4,
+			Status: entity.ServerStatus(status),
 		}
 
 		// Create server

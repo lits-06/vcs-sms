@@ -58,8 +58,8 @@ func printRequestInfo(req server.UptimeRequest) {
 	fmt.Println("─────────────────────────────────────")
 
 	fmt.Printf("  📅 Date Range:\n")
-	fmt.Printf("     Start: %s\n", req.StartDate.Format("2006-01-02"))
-	fmt.Printf("     End:   %s\n", req.EndDate.Format("2006-01-02"))
+	fmt.Printf("     Start: %s\n", req.StartDate.Format(time.DateTime))
+	fmt.Printf("     End:   %s\n", req.EndDate.Format(time.DateTime))
 
 	fmt.Println()
 }
