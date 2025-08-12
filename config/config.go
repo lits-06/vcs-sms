@@ -58,8 +58,11 @@ type ElasticsearchConfig struct {
 }
 
 type JWTConfig struct {
-	Secret string        `mapstructure:"secret" validate:"required,min=32"`
-	Expiry time.Duration `mapstructure:"expiry" validate:"required"`
+	AccessSecret  string        `mapstructure:"access_secret" validate:"required,min=32"`
+	RefreshSecret string        `mapstructure:"refresh_secret" validate:"required,min=32"`
+	AccessTTL     time.Duration `mapstructure:"access_ttl" validate:"required"`
+	RefreshTTL    time.Duration `mapstructure:"refresh_ttl" validate:"required"`
+	Issuer        string        `mapstructure:"issuer" validate:"required"`
 }
 
 type SMTPConfig struct {
