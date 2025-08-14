@@ -3,17 +3,20 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/lits-06/vcs-sms/api/handler"
+	"github.com/lits-06/vcs-sms/api/middleware"
 )
 
 type Route struct {
-	serverHandler *handler.ServerHandler
-	reportHandler *handler.ReportHandler
+	serverHandler  *handler.ServerHandler
+	reportHandler  *handler.ReportHandler
+	authMiddleware *middleware.AuthMiddleware
 }
 
-func NewRoute(serverHandler *handler.ServerHandler, reportHandler *handler.ReportHandler) *Route {
+func NewRoute(serverHandler *handler.ServerHandler, reportHandler *handler.ReportHandler, authMiddleware *middleware.AuthMiddleware) *Route {
 	return &Route{
-		serverHandler: serverHandler,
-		reportHandler: reportHandler,
+		serverHandler:  serverHandler,
+		reportHandler:  reportHandler,
+		authMiddleware: authMiddleware,
 	}
 }
 

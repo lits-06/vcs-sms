@@ -49,4 +49,10 @@ const (
 	RoleUser  = "user"
 )
 
-type
+func DefaultUserRole() *Role {
+	return &Role{Name: RoleUser}
+}
+
+func DefaultUserScopes() []string {
+	return []string{ServerScopeView, ServerScopeExport}
+}
