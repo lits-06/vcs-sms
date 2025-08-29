@@ -20,3 +20,12 @@ type Repository interface {
 	ExistsWithID(ctx context.Context, id string) (bool, error)
 	ExistsWithName(ctx context.Context, name string) (bool, error)
 }
+
+type CacheRepository interface {
+	GetServerList(ctx context.Context) (*[]Server, error)
+	SetServerList(ctx context.Context, servers *[]Server) error
+	GetServer(ctx context.Context, serverID string) (*Server, error)
+	SetServer(ctx context.Context, serverID string, server *Server) error
+	DeleteServer(ctx context.Context, serverID string) error
+	DeleteServerList(ctx context.Context) error
+}
