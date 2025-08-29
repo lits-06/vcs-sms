@@ -65,16 +65,16 @@ type appLogger struct {
 }
 
 // NewAppLogger App Logger constructor
-func NewAppLogger(cfg *Config) *appLogger {
+func NewAppLogger(cfg *Config) Logger {
 	return &appLogger{
-		level:     cfg.LogLevel,
-		devMode:   cfg.DevMode,
-		folder:   cfg.Folder,
-		file:     cfg.File,
-		maxSize:  cfg.MaxSize,
+		level:      cfg.LogLevel,
+		devMode:    cfg.DevMode,
+		folder:     cfg.Folder,
+		file:       cfg.File,
+		maxSize:    cfg.MaxSize,
 		maxBackups: cfg.MaxBackups,
-		maxAge:   cfg.MaxAge,
-		compress: cfg.Compression,
+		maxAge:     cfg.MaxAge,
+		compress:   cfg.Compression,
 	}
 }
 
@@ -298,4 +298,3 @@ func (l *appLogger) KafkaLogCommittedMessage(topic string, partition int, offset
 		zap.Int64(constants.Offset, offset),
 	)
 }
-
