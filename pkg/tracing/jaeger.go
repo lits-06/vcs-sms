@@ -21,7 +21,7 @@ func NewJaegerTracer(jaegerConfig *Config) (opentracing.Tracer, io.Closer, error
 
 		// "const" sampler is a binary sampling strategy: 0=never sample, 1=always sample.
 		Sampler: &config.SamplerConfig{
-			Type:  "const",
+			Type:  jaeger.SamplerTypeConst,
 			Param: 1,
 		},
 
