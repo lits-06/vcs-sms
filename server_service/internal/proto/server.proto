@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package serverService;
+option go_package = ".;serverService";
+
+message Server {
+    string name = 1;
+    string ipv4 = 2;
+    string status = 3;
+}
+
+message CreateServerRequest {
+    string name = 1;
+    string ipv4 = 2;
+    string status = 3;
+}
+
+message CreateServerResponse {
+    Server server = 1;
+}
+
+message UpdateServerRequest {
+    string name = 1;
+    string ipv4 = 2;
+    string status = 3;
+}
+
+message UpdateServerResponse {
+    Server server = 1;
+}
+
+message DeleteServerRequest {
+    string id = 1;
+}
+
+message DeleteServerResponse {
+    bool success = 1;
+}
+
+message ListServersRequest {
+    int32 page = 1;
+    int32 limit = 2;
+    string search = 3;
+    string status = 4;
+    string sort_by = 5;
+    string sort_order = 6;
+}
+
+message ListServersResponse {
+    repeated Server servers = 1;
+    int64 total = 2;
+    int32 page = 3;
+    int32 limit = 4;
+}
+
+message ImportServersFromExcelRequest {
+    bytes file_data = 1;
+}
+
+message ImportServersFromExcelResponse {
+    int32 imported_count = 1;
+    repeated string errors = 2;
+}
+
+message ExportServersToExcelRequest {
+    string search = 1;
+    string status = 2;
+}
+
+message ExportServersToExcelResponse {
+    string file_path = 1;
+}
+
+service ServerService {
+    rpc CreateServer(CreateServerRequest) returns (CreateServerResponse);
+    rpc UpdateServer(UpdateServerRequest) returns (UpdateServerResponse);
+    rpc DeleteServer(DeleteServerRequest) returns (DeleteServerResponse);
+    rpc ListServers(ListServersRequest) returns (ListServersResponse);
+    rpc ImportServersFromExcel(ImportServersFromExcelRequest) returns (ImportServersFromExcelResponse);
+    rpc ExportServersToExcel(ExportServersToExcelRequest) returns (ExportServersToExcelResponse);
+}
