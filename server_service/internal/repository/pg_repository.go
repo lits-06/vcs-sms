@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/server_service/internal/domain"
+	"github.com/opentracing/opentracing-go"
 
 	"gorm.io/gorm"
 )
@@ -13,44 +15,56 @@ type serverRepository struct {
 	db *gorm.DB
 }
 
-func NewServerRepository(db *gorm.DB) *serverRepository {
+func NewServerRepository(db *gorm.DB) domain.Repository {
 	return &serverRepository{
 		db: db,
 	}
 }
 
 func (r *serverRepository) Create(ctx context.Context, srv *domain.Server) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.Create")
+	defer span.Finish()
+
 	if err := r.db.WithContext(ctx).Create(srv).Error; err != nil {
-		return fmt.Errorf("failed to create server: %w", err)
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to create server: %w", err))
 	}
 	return nil
 }
 
 func (r *serverRepository) GetByID(ctx context.Context, id string) (*domain.Server, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.GetByID")
+	defer span.Finish()
+
 	var srv domain.Server
 	err := r.db.WithContext(ctx).Where("id = ?", id).First(&srv).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil // Not found
 		}
-		return nil, fmt.Errorf("failed to get server by ID: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get server by ID: %w", err))
 	}
 	return &srv, nil
 }
 
 func (r *serverRepository) GetByName(ctx context.Context, name string) (*domain.Server, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.GetByName")
+	defer span.Finish()
+
 	var srv domain.Server
 	err := r.db.WithContext(ctx).Where("name = ?", name).First(&srv).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get server by name: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get server by name: %w", err))
 	}
 	return &srv, nil
 }
 
 func (r *serverRepository) Update(ctx context.Context, srv *domain.Server) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.Update")
+	defer span.Finish()
+
 	data := make(map[string]interface{})
 	if srv.Name != "" {
 		data["name"] = srv.Name
@@ -65,31 +79,37 @@ func (r *serverRepository) Update(ctx context.Context, srv *domain.Server) error
 	result := r.db.WithContext(ctx).Model(srv).Where("id = ?", srv.ID).Updates(data)
 
 	if result.Error != nil {
-		return fmt.Errorf("failed to update server: %w", result.Error)
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to update server: %w", result.Error))
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("server with ID %s not found", srv.ID)
+		return tracing.TraceWithErr(span, fmt.Errorf("server with ID %s not found", srv.ID))
 	}
 
 	return nil
 }
 
 func (r *serverRepository) Delete(ctx context.Context, id string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.Delete")
+	defer span.Finish()
+
 	result := r.db.WithContext(ctx).Where("id = ?", id).Delete(&domain.Server{})
 
 	if result.Error != nil {
-		return fmt.Errorf("failed to delete server: %w", result.Error)
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to delete server: %w", result.Error))
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("server with ID %s not found", id)
+		return tracing.TraceWithErr(span, fmt.Errorf("server with ID %s not found", id))
 	}
 
 	return nil
 }
 
 func (r *serverRepository) List(ctx context.Context, filter domain.ServerFilter, sort domain.ServerSort, pagination domain.ServerPagination) (*[]domain.Server, int, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.List")
+	defer span.Finish()
+
 	var servers []domain.Server
 	var total int64
 
@@ -99,7 +119,7 @@ func (r *serverRepository) List(ctx context.Context, filter domain.ServerFilter,
 
 	// Count total records
 	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to count servers: %w", err)
+		return nil, 0, tracing.TraceWithErr(span, fmt.Errorf("failed to count servers: %w", err))
 	}
 
 	// Apply sorting
@@ -110,7 +130,7 @@ func (r *serverRepository) List(ctx context.Context, filter domain.ServerFilter,
 
 	// Execute query
 	if err := query.Find(&servers).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to list servers: %w", err)
+		return nil, 0, tracing.TraceWithErr(span, fmt.Errorf("failed to list servers: %w", err))
 	}
 
 	return &servers, int(total), nil
@@ -167,19 +187,25 @@ func (r *serverRepository) applyPagination(query *gorm.DB, pagination domain.Ser
 }
 
 func (r *serverRepository) ExistsWithID(ctx context.Context, id string) (bool, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.ExistsWithID")
+	defer span.Finish()
+
 	var count int64
 	err := r.db.WithContext(ctx).Model(&domain.Server{}).Where("id = ?", id).Count(&count).Error
 	if err != nil {
-		return false, fmt.Errorf("failed to check if server exists by ID: %w", err)
+		return false, tracing.TraceWithErr(span, fmt.Errorf("failed to check if server exists by ID: %w", err))
 	}
 	return count > 0, nil
 }
 
 func (r *serverRepository) ExistsWithName(ctx context.Context, name string) (bool, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.ExistsWithName")
+	defer span.Finish()
+
 	var count int64
 	err := r.db.WithContext(ctx).Model(&domain.Server{}).Where("name = ?", name).Count(&count).Error
 	if err != nil {
-		return false, fmt.Errorf("failed to check if server exists by name: %w", err)
+		return false, tracing.TraceWithErr(span, fmt.Errorf("failed to check if server exists by name: %w", err))
 	}
 	return count > 0, nil
 }
