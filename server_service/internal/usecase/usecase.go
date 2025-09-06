@@ -4,11 +4,9 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
-	"os"
-	"path/filepath"
 	"time"
 
-	"github.com/lits-06/vcs-sms/pkg-old/utils"
+	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/server_service/internal/domain"
 	"github.com/opentracing/opentracing-go"
 	"github.com/xuri/excelize/v2"
@@ -17,14 +15,12 @@ import (
 type serverUsecase struct {
 	serverRepo     domain.Repository
 	cacheRepo      domain.CacheRepository
-	serverProvider domain.Provider
 }
 
-func NewServerUsecase(serverRepo domain.Repository, cacheRepo domain.CacheRepository, serverProvider domain.Provider) domain.UseCase {
+func NewServerUsecase(serverRepo domain.Repository, cacheRepo domain.CacheRepository) domain.UseCase {
 	return &serverUsecase{
-		serverRepo:     serverRepo,
-		cacheRepo:      cacheRepo,
-		serverProvider: serverProvider,
+		serverRepo: serverRepo,
+		cacheRepo:  cacheRepo,
 	}
 }
 
@@ -35,19 +31,19 @@ func (uc *serverUsecase) CreateServer(ctx context.Context, req *domain.CreateSer
 	// Check if server with same ID already exists
 	exist, err := uc.serverRepo.ExistsWithID(ctx, req.ID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if server ID exists: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to check if server ID exists: %w", err))
 	}
 	if exist {
-		return nil, fmt.Errorf("server with ID %s already exists", req.ID)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("server with ID %s: %w", req.ID, domain.ErrServerExists))
 	}
 
 	// Check if server with same name already exists
 	exist, err = uc.serverRepo.ExistsWithName(ctx, req.Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if server name exists: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to check if server name exists: %w", err))
 	}
 	if exist {
-		return nil, fmt.Errorf("server with name %s already exists", req.Name)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("server with name %s: %w", req.Name, domain.ErrServerExists))
 	}
 
 	// Create server entity
@@ -60,24 +56,16 @@ func (uc *serverUsecase) CreateServer(ctx context.Context, req *domain.CreateSer
 		IPv4:      req.IPv4,
 	}
 
-	err = uc.serverProvider.CreateServer(ctx, server)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create server: %w", err)
-	}
-	providerCreated = true
-
 	// Save to database
 	err = uc.serverRepo.Create(ctx, server)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create server: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to create server: %w", err))
 	}
-	dbCreated = true
 
 	err = uc.cacheRepo.SetServer(ctx, server.ID, server)
 	if err != nil {
-		return nil, fmt.Errorf("failed to save server to cache: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to save server to cache: %w", err))
 	}
-	cacheCreated = true
 
 	return server, nil
 }
@@ -90,11 +78,11 @@ func (uc *serverUsecase) ViewServer(ctx context.Context, req *domain.QueryServer
 	// Get servers from repository
 	servers, total, err := uc.serverRepo.List(ctx, req.Filter, req.Sort, req.Pagination)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list servers: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to list servers: %w", err))
 	}
 
 	// Prepare response
-	response := &QueryServerResponse{
+	response := &domain.QueryServerResponse{
 		Servers: servers,
 		Total:   total,
 	}
@@ -108,10 +96,10 @@ func (uc *serverUsecase) UpdateServer(ctx context.Context, req *domain.UpdateSer
 
 	server, err := uc.serverRepo.GetByID(ctx, req.ID)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve server: %w", err)
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to retrieve server: %w", err))
 	}
 	if server == nil {
-		return fmt.Errorf("server with ID %s not found", req.ID)
+		return tracing.TraceWithErr(span, fmt.Errorf("server with ID %s: %w", req.ID, domain.ErrServerNotFound))
 	}
 
 	// Update fields only if they are provided (non-empty)
@@ -119,10 +107,10 @@ func (uc *serverUsecase) UpdateServer(ctx context.Context, req *domain.UpdateSer
 		// Check if new name already exists (but not for current server)
 		existingServer, err := uc.serverRepo.GetByName(ctx, req.Name)
 		if err != nil {
-			return fmt.Errorf("failed to check if server name exists: %w", err)
+			return tracing.TraceWithErr(span, fmt.Errorf("failed to check if server name exists: %w", err))
 		}
 		if existingServer != nil && existingServer.ID != req.ID {
-			return fmt.Errorf("server with name %s already exists", req.Name)
+			return tracing.TraceWithErr(span, fmt.Errorf("server with name %s: %w", req.Name, domain.ErrServerExists))
 		}
 
 		server.Name = req.Name
@@ -140,20 +128,15 @@ func (uc *serverUsecase) UpdateServer(ctx context.Context, req *domain.UpdateSer
 		server.Status = req.Status
 	}
 
-	err = uc.serverProvider.UpdateServer(ctx, server)
-	if err != nil {
-		return fmt.Errorf("failed to update server in provider: %w", err)
-	}
-
 	// Update server
 	err = uc.serverRepo.Update(ctx, server)
 	if err != nil {
-		return fmt.Errorf("failed to update server: %w", err)
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to update server: %w", err))
 	}
 
 	err = uc.cacheRepo.SetServer(ctx, server.ID, server)
 	if err != nil {
-		return fmt.Errorf("failed to update server in cache: %w", err)
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to update server in cache: %w", err))
 	}
 
 	return nil
@@ -164,32 +147,27 @@ func (uc *serverUsecase) DeleteServer(ctx context.Context, serverID string) erro
 	defer span.Finish()
 
 	if serverID == "" {
-		return fmt.Errorf("server ID cannot be empty")
+		return tracing.TraceWithErr(span, fmt.Errorf("server ID cannot be empty"))
 	}
 
 	// Check if server exists
 	exist, err := uc.serverRepo.ExistsWithID(ctx, serverID)
 	if err != nil {
-		return fmt.Errorf("server not found: %w", err)
+		return tracing.TraceWithErr(span, fmt.Errorf("server not found: %w", err))
 	}
 	if !exist {
-		return fmt.Errorf("server with ID %s does not exist", serverID)
-	}
-
-	err = uc.serverProvider.DeleteServer(ctx, serverID)
-	if err != nil {
-		return fmt.Errorf("failed to delete server from provider: %w", err)
+		return tracing.TraceWithErr(span, fmt.Errorf("server with ID %s does not exist: %w", serverID, domain.ErrServerNotFound))
 	}
 
 	// Delete the server
 	err = uc.serverRepo.Delete(ctx, serverID)
 	if err != nil {
-		return fmt.Errorf("failed to delete server: %w", err)
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to delete server: %w", err))
 	}
 
 	err = uc.cacheRepo.DeleteServer(ctx, serverID)
 	if err != nil {
-		return fmt.Errorf("failed to delete server from cache: %w", err)
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to delete server from cache: %w", err))
 	}
 
 	return nil
@@ -202,7 +180,7 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 	// Open Excel file
 	f, err := excelize.OpenReader(file)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open Excel file: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to open Excel file: %w", err))
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -212,20 +190,20 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 
 	sheets := f.GetSheetList()
 	if len(sheets) == 0 {
-		return nil, fmt.Errorf("excel file must contain at least one sheet")
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("excel file must contain at least one sheet"))
 	}
 
 	// Get all rows from Sheet1
 	rows, err := f.GetRows(sheets[0])
 	if err != nil {
-		return nil, fmt.Errorf("failed to get rows from Excel file: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get rows from Excel file: %w", err))
 	}
 
 	if len(rows) < 2 {
-		return nil, fmt.Errorf("excel file must contain at least headers and one data row")
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("excel file must contain at least headers and one data row"))
 	}
 
-	result := &ImportResponse{
+	result := &domain.ImportResponse{
 		SuccessServers: make([]string, 0),
 		FailureServers: make([]string, 0),
 	}
@@ -274,7 +252,7 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 		}
 
 		// Create server request
-		req := CreateServerRequest{
+		req := &domain.CreateServerRequest{
 			ID:     serverID,
 			Name:   serverName,
 			IPv4:   serverIPv4,
@@ -296,14 +274,14 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 	return result, nil
 }
 
-func (uc *serverUsecase) ExportServersToExcel(ctx context.Context, req *domain.QueryServerRequest) error {
+func (uc *serverUsecase) ExportServersToExcel(ctx context.Context, req *domain.QueryServerRequest) ([]byte, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverUsecase.ExportServersToExcel")
 	defer span.Finish()
 
 	// Get servers from repository
 	servers, _, err := uc.serverRepo.List(ctx, req.Filter, req.Sort, req.Pagination)
 	if err != nil {
-		return fmt.Errorf("failed to list servers: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to list servers: %w", err))
 	}
 
 	// Create Excel file
@@ -332,29 +310,10 @@ func (uc *serverUsecase) ExportServersToExcel(ctx context.Context, req *domain.Q
 		f.SetCellValue("Sheet1", fmt.Sprintf("F%d", row), server.UpdatedAt.Format("2006-01-02 15:04:05"))
 	}
 
-	// Tìm project root (thư mục chứa go.mod)
-	projectRoot, err := utils.FindProjectRoot()
+	buffer, err := f.WriteToBuffer()
 	if err != nil {
-		return fmt.Errorf("failed to find project root: %w", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to write Excel file to buffer: %w", err))
 	}
 
-	// Tạo đường dẫn exports từ project root
-	exportDir := filepath.Join(projectRoot, "exports")
-
-	// Tạo thư mục nếu chưa tồn tại
-	if err := os.MkdirAll(exportDir, 0755); err != nil {
-		return fmt.Errorf("failed to create exports directory: %w", err)
-	}
-
-	// Create filename with timestamp
-	filename := fmt.Sprintf("servers_export_%s.xlsx", time.Now().Format("20060102_150405"))
-
-	path := filepath.Join(exportDir, filename)
-
-	// Save the file
-	if err := f.SaveAs(path); err != nil {
-		return fmt.Errorf("failed to save Excel file: %w", err)
-	}
-
-	return nil
+	return buffer.Bytes(), nil
 }
