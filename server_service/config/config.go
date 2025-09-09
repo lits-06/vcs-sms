@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/lits-06/vcs-sms/pkg/constants"
@@ -22,27 +23,20 @@ func init() {
 }
 
 type Config struct {
-	ServiceName      string              `mapstructure:"serviceName"`
-	Logger           *logger.Config      `mapstructure:"logger"`
-	KafkaTopics      KafkaTopics         `mapstructure:"kafkaTopics"`
-	GRPC             GRPC                `mapstructure:"grpc"`
-	Postgresql       *postgres.Config    `mapstructure:"postgres"`
-	Kafka            *kafka.Config `mapstructure:"kafka"`
-	Redis            *redis.Config       `mapstructure:"redis"`
-	Probes           probes.Config       `mapstructure:"probes"`
-	ServiceSettings  ServiceSettings     `mapstructure:"serviceSettings"`
-	Jaeger           *tracing.Config     `mapstructure:"jaeger"`
+	ServiceName     string           `mapstructure:"serviceName"`
+	Logger          *logger.Config   `mapstructure:"logger"`
+	GRPC            GRPC             `mapstructure:"grpc"`
+	Postgresql      *postgres.Config `mapstructure:"postgres"`
+	Kafka           *kafka.Config    `mapstructure:"kafka"`
+	Redis           *redis.Config    `mapstructure:"redis"`
+	Probes          probes.Config    `mapstructure:"probes"`
+	ServiceSettings ServiceSettings  `mapstructure:"serviceSettings"`
+	Jaeger          *tracing.Config  `mapstructure:"jaeger"`
 }
 
 type GRPC struct {
 	Port        string `mapstructure:"port"`
 	Development bool   `mapstructure:"development"`
-}
-
-type KafkaTopics struct {
-	ProductCreated kafkaClient.TopicConfig `mapstructure:"productCreated"`
-	ProductUpdated kafkaClient.TopicConfig `mapstructure:"productUpdated"`
-	ProductDeleted kafkaClient.TopicConfig `mapstructure:"productDeleted"`
 }
 
 type ServiceSettings struct {
