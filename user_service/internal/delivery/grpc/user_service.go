@@ -1,0 +1,54 @@
+package grpc
+
+import (
+	"context"
+
+	"github.com/lits-06/vcs-sms/pkg/logger"
+	"github.com/lits-06/vcs-sms/pkg/tracing"
+	userpb "github.com/lits-06/vcs-sms/proto"
+	"github.com/lits-06/vcs-sms/user_service/internal/domain"
+	"github.com/opentracing/opentracing-go"
+)
+
+type userService struct {
+	log    logger.Logger
+	userUC domain.UseCase
+}
+
+func NewUserService(log logger.Logger, userUC domain.UseCase) *userService {
+	return &userService{
+		log:    log,
+		userUC: userUC,
+	}
+}
+
+func (s *userService) GetUserByEmail(ctx context.Context, req *userpb.GetUserByEmailRequest) (*userpb.GetUserByEmailResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "userService.GetUserByEmail")
+	defer span.Finish()
+
+	user, err := s.userUC.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		s.log.Errorf("userUC.GetUserByEmail: %v", err)
+		return nil, tracing.TraceWithErr(span, err)
+	}
+
+	return &userpb.GetUserByEmailResponse{
+		User: &userpb.User{
+			Id:     user.ID,
+			Email:  user.Email,
+			Scopes: convertScopes(&user.Scopes),
+		},
+	}, nil
+}
+
+func convertScopes(scopes *[]domain.Scope) []*userpb.Scope {
+	if scopes == nil {
+		return nil
+	}
+
+	result := make([]*userpb.Scope, len(*scopes))
+	for i, scope := range *scopes {
+		result[i] = &userpb.Scope{Name: scope.Name}
+	}
+	return result
+}

@@ -53,6 +53,21 @@ func (u *userUsecase) Register(ctx context.Context, req *domain.RegisterRequest)
 	return nil
 }
 
+func (u *userUsecase) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "userUsecase.GetUserByEmail")
+	defer span.Finish()
+
+	user, err := u.userRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get user by email: %w", err))
+	}
+	if user == nil {
+		return nil, tracing.TraceWithErr(span, domain.ErrUserNotFound)
+	}
+
+	return user, nil
+}
+
 func (u *userUsecase) AddUserScope(ctx context.Context, userID string, scopes []string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "userUsecase.AddUserScope")
 	defer span.Finish()
