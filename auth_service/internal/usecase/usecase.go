@@ -163,8 +163,8 @@ func (a *authUsecase) RefreshAccessToken(ctx context.Context, refreshToken strin
 	return newAccessToken, nil
 }
 
-func (a *authUsecase) RevokeToken(ctx context.Context, accessToken string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "authUsecase.RevokeToken")
+func (a *authUsecase) RevokeAccessToken(ctx context.Context, accessToken string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "authUsecase.RevokeAccessToken")
 	defer span.Finish()
 
 	// Parse the token to get its expiration time
@@ -194,8 +194,56 @@ func (a *authUsecase) RevokeToken(ctx context.Context, accessToken string) error
 	return nil
 }
 
+func (a *authUsecase) RevokeRefreshToken(ctx context.Context, refreshToken string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "authUsecase.RevokeRefreshToken")
+	defer span.Finish()
+
+	// Parse the token to get its expiration time
+	parsedToken, err := jwt.ParseWithClaims(refreshToken, &domain.RefreshClaim{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(a.cfg.JWT.RefreshSecretKey), nil
+	})
+	if err != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("jwt.ParseWithClaims: %w", err))
+	}
+
+	claims, ok := parsedToken.Claims.(*domain.RefreshClaim)
+	if !ok || !parsedToken.Valid {
+		return tracing.TraceWithErr(span, fmt.Errorf("invalid token claims"))
+	}
+
+	expiration := claims.ExpiresAt.Unix()
+
+	// Add the token to the blacklist
+	err = a.cacheRepo.AddBlacklist(ctx, refreshToken, expiration)
+	if err != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("cacheRepo.AddBlacklist: %w", err))
+	}
+
+	// Remove the refresh token from the cache
+	err = a.cacheRepo.DeleteRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("cacheRepo.DeleteRefreshToken: %w", err))
+	}
+
+	return nil
+}
+
 func (a *authUsecase) RevokeUserTokens(ctx context.Context, userID string) error {
-	// Implement logic to revoke all tokens for a specific user
+	span, ctx := opentracing.StartSpanFromContext(ctx, "authUsecase.RevokeUserTokens")
+	defer span.Finish()
+
+	// Implement logic to revoke all tokens associated with the user
+	// This might involve querying a database or cache to find all tokens
+	// and then blacklisting them or deleting them as appropriate.
+
+	_ = userID // Placeholder to avoid unused variable error
+
+	// Since we don't have a storage of all tokens per user in this example,
+	// this function is left unimplemented. In a real-world scenario, you would
+	// need to implement this based on your application's requirements.
 
 	return nil
 }

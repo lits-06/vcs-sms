@@ -10,6 +10,7 @@ type UseCase interface {
 	GenerateAccessToken(ctx context.Context, email string, scopes []string) (string, error)
 	GenerateRefreshToken(ctx context.Context) (string, error)
 	RefreshAccessToken(ctx context.Context, refreshToken string) (string, error)
-	RevokeToken(ctx context.Context, token string) error
+	RevokeAccessToken(ctx context.Context, accessToken string) error
+	RevokeRefreshToken(ctx context.Context, refreshToken string) error
 	RevokeUserTokens(ctx context.Context, userID string) error
 }
