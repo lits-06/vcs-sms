@@ -5,17 +5,16 @@ import (
 )
 
 type Repository interface {
-	GetServerSnapshot(serverID string) (*ServerSnapshot, error)
-}
+	GetServerSnapshot(serverID string) (*Server, error)
 
-type StateRepository interface {
-	GetServerSnapshot(ctx context.Context, serverID string) (*ServerSnapshot, error)
-	SaveServerSnapshot(ctx context.Context, snapshot *ServerSnapshot) error
-	CreateStateRecord(ctx context.Context, record *ServerState) error
+	GetAllServersSnapshot(ctx context.Context) (*[]Server, error)
 }
 
 type CacheRepository interface {
-	GetServerState(ctx context.Context, serverID string) (*ServerSnapshot, error)
-	SetServerState(ctx context.Context, serverID string, snapshot *ServerSnapshot) error
+	GetServerState(ctx context.Context, serverID string) (*Server, error)
+	SetServerState(ctx context.Context, serverID string, snapshot *Server) error
 	DeleteServerState(ctx context.Context, serverID string) error
+
+	GetAllServersSnapshot(ctx context.Context) (*[]Server, error)
+	SetAllServersSnapshot(ctx context.Context, snapshots *[]Server) error
 }

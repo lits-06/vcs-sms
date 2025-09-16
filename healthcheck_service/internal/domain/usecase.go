@@ -1,10 +1,11 @@
 package domain
 
-import "context"
+import (
+	"context"
+)
 
 type UseCase interface {
-	StartHealthCheckScheduler(ctx context.Context) error
-	StopHealthCheckScheduler(ctx context.Context) error
-	CheckServerHealth(ctx context.Context, serverID string) (*HealthCheckResult, error)
-	GetServerStatus(ctx context.Context, serverID string) (*ServerSnapshot, error)
+	StartHealthCheckScheduler(ctx context.Context)
+	StopHealthCheckScheduler(ctx context.Context)
+	CheckServersHealth(ctx context.Context, servers *[]Server)
 }

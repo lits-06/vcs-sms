@@ -37,3 +37,5 @@ func (r *redisRepository) GetServerState(ctx context.Context, serverID string) (
 
 	return &snapshot, nil
 }
+
+func (r *redisRepository) GetAllServersSnapshot(ctx context.Context) (*[]domain.ServerSnapshot, error) {
