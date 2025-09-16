@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"time"
 
 	"github.com/lits-06/vcs-sms/pkg/kafka"
 	"github.com/lits-06/vcs-sms/pkg/logger"
@@ -16,18 +17,16 @@ func init() {
 }
 
 type Config struct {
-	ServiceName string          `mapstructure:"serviceName"`
-	Logger      *logger.Config  `mapstructure:"logger"`
-	KafkaTopics KafkaTopics     `mapstructure:"kafkaTopics"`
-	Http        Http            `mapstructure:"http"`
-	Grpc        Grpc            `mapstructure:"grpc"`
-	Kafka       *kafka.Config   `mapstructure:"kafka"`
-	Probes      probes.Config   `mapstructure:"probes"`
-	Jaeger      *tracing.Config `mapstructure:"jaeger"`
-	JWT         JWT             `mapstructure:"jwt"`
+	ServiceName string         `mapstructure:"serviceName"`
+	Logger      *logger.Config `mapstructure:"logger"`
+
+	Kafka  *kafka.Config   `mapstructure:"kafka"`
+	Probes probes.Config   `mapstructure:"probes"`
+	Jaeger *tracing.Config `mapstructure:"jaeger"`
 
 	Elasticsearch Elasticsearch `mapstructure:"elasticsearch"`
 	Redis         Redis         `mapstructure:"redis"`
+	Duration      time.Duration `mapstructure:"duration"`
 }
 
 type Elasticsearch struct {
