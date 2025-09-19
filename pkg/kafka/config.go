@@ -2,9 +2,8 @@ package kafka
 
 // Config kafka config
 type Config struct {
-	Brokers    []string `mapstructure:"brokers"`
-	GroupID    string   `mapstructure:"groupID"`
-	InitTopics bool     `mapstructure:"initTopics"`
+	Brokers []string `mapstructure:"brokers"`
+	GroupID string   `mapstructure:"groupID"`
 }
 
 // TopicConfig kafka topic config
