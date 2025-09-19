@@ -1,5 +1,7 @@
 package domain
 
+import "github.com/lits-06/vcs-sms/pkg/constants"
+
 type User struct {
 	ID       string  `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
 	Email    string  `gorm:"type:varchar(255);uniqueIndex;not null"`
@@ -22,33 +24,21 @@ func (Scope) TableName() string {
 	return "scopes"
 }
 
-const (
-	ServerScopeCreate = "server:create"
-	ServerScopeView   = "server:view"
-	ServerScopeUpdate = "server:update"
-	ServerScopeDelete = "server:delete"
-	ServerScopeImport = "server:import"
-	ServerScopeExport = "server:export"
-	ServerScopeReport = "server:report"
-
-	UserScopeUpdate = "user:update"
-)
-
 func DefaultScopes() []Scope {
 	return []Scope{
-		{Name: ServerScopeView},
+		{Name: constants.ServerScopeView},
 	}
 }
 
 func IsValidScope(scope string) bool {
 	switch scope {
-	case ServerScopeCreate,
-		ServerScopeView,
-		ServerScopeUpdate,
-		ServerScopeDelete,
-		ServerScopeImport,
-		ServerScopeExport,
-		ServerScopeReport:
+	case constants.ServerScopeCreate,
+		constants.ServerScopeView,
+		constants.ServerScopeUpdate,
+		constants.ServerScopeDelete,
+		constants.ServerScopeImport,
+		constants.ServerScopeExport,
+		constants.ServerScopeReport:
 		return true
 	default:
 		return false

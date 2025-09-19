@@ -20,22 +20,22 @@ func NewUserUsecase(userRepo domain.Repository) domain.UseCase {
 	}
 }
 
-func (u *userUsecase) Register(ctx context.Context, req *domain.RegisterRequest) error {
+func (u *userUsecase) Register(ctx context.Context, req *domain.RegisterRequest) (*domain.User, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "userUsecase.Register")
 	defer span.Finish()
 
 	existUser, err := u.userRepo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to get user by email: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get user by email: %w", err))
 	}
 
 	if existUser != nil {
-		return tracing.TraceWithErr(span, domain.ErrUserExists)
+		return nil, tracing.TraceWithErr(span, domain.ErrUserExists)
 	}
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to hash password: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to hash password: %w", err))
 	}
 
 	user := &domain.User{
@@ -45,12 +45,15 @@ func (u *userUsecase) Register(ctx context.Context, req *domain.RegisterRequest)
 		Scopes:   domain.DefaultScopes(),
 	}
 
-	err = u.userRepo.CreateUser(ctx, user)
+	createdUser, err := u.userRepo.CreateUser(ctx, user)
 	if err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to create user: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to create user: %w", err))
 	}
 
-	return nil
+	return &domain.User{
+		ID:    createdUser.ID,
+		Email: createdUser.Email,
+	}, nil
 }
 
 func (u *userUsecase) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {

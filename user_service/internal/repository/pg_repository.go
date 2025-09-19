@@ -20,15 +20,15 @@ func NewUserRepository(db *gorm.DB) domain.Repository {
 	}
 }
 
-func (r *userRepository) CreateUser(ctx context.Context, user *domain.User) error {
+func (r *userRepository) CreateUser(ctx context.Context, user *domain.User) (*domain.User, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "userRepository.CreateUser")
 	defer span.Finish()
 
 	if err := r.db.WithContext(ctx).Create(user).Error; err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to create user: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to create user: %w", err))
 	}
 
-	return nil
+	return user, nil
 }
 
 func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
