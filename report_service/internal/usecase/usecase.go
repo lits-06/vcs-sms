@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/pkg/utils"
 	"github.com/lits-06/vcs-sms/report_service/config"
 	"github.com/lits-06/vcs-sms/report_service/internal/domain"
+	"github.com/opentracing/opentracing-go"
 	"gopkg.in/gomail.v2"
 )
 
@@ -34,10 +34,10 @@ func (uc *reportUseCase) ReportStats(ctx context.Context, req *domain.UptimeRequ
 		return tracing.TraceWithErr(span, fmt.Errorf("failed to get uptime stats: %w", err))
 	}
 
-	return uc.sendUptimeReport(ctx, stats)
+	return uc.sendUptimeReport(ctx, req.Email, stats)
 }
 
-func (uc *reportUseCase) sendUptimeReport(ctx context.Context, stats *domain.UptimeStats) error {
+func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, stats *domain.UptimeStats) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "reportUseCase.sendUptimeReport")
 	defer span.Finish()
 
@@ -47,9 +47,11 @@ func (uc *reportUseCase) sendUptimeReport(ctx context.Context, stats *domain.Upt
 		return tracing.TraceWithErr(span, err)
 	}
 
+	emails := append([]string{email}, uc.cfg.Smtp.To...)
+
 	m := gomail.NewMessage()
 	m.SetHeader("From", uc.cfg.Smtp.From)
-	m.SetHeader("To", uc.cfg.Smtp.To...)
+	m.SetHeader("To", emails...)
 	m.SetHeader("Subject", fmt.Sprintf("Server Uptime Report - %s to %s",
 		stats.StartDate.Format(time.DateTime),
 		stats.EndDate.Format(time.DateTime)))
