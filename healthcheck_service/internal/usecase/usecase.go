@@ -70,8 +70,9 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]
 			}
 
 			if snapshot.Status != server.Status {
-				state := domain.ServerState{
-					ServerID:  server.ID,
+				state := domain.Server{
+					ServerID:  server.ServerID,
+					Port:      server.Port,
 					Status:    snapshot.Status,
 					Timestamp: time.Now(),
 				}
@@ -122,19 +123,41 @@ func (h *healthCheckUseCase) checkServerHealth(server *domain.Server) (*domain.S
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	responseTime := time.Since(start)
 	if err != nil {
-		h.log.Debug("Failed to ping id:%s port:%d (took %v): %v", server.ID, server.Port, responseTime, err)
+		h.log.Debug("Failed to ping id:%s port:%d (took %v): %v", server.ServerID, server.Port, responseTime, err)
 		return &domain.Server{
-			ID:     server.ID,
-			Port:   server.Port,
-			Status: domain.StatusOffline,
+			ServerID: server.ServerID,
+			Port:     server.Port,
+			Status:   domain.StatusOffline,
 		}, err
 	}
 
 	defer conn.Close()
 
 	return &domain.Server{
-		ID:     server.ID,
-		Port:   server.Port,
-		Status: domain.StatusOnline,
+		ServerID: server.ServerID,
+		Port:     server.Port,
+		Status:   domain.StatusOnline,
 	}, nil
+}
+
+func (h *healthCheckUseCase) IndexServerState(ctx context.Context, server *domain.Server) error {
+	err := h.repo.IndexServerState(ctx, server)
+	if err != nil {
+		h.log.Error("h.repo.IndexServerState: %v", err)
+		return err
+	}
+
+	err = h.repo.SaveServerSnapshot(ctx, server)
+	if err != nil {
+		h.log.Error("h.repo.SaveServerSnapshot: %v", err)
+		return err
+	}
+
+	err = h.cacheRepo.SaveServerSnapshot(ctx, server)
+	if err != nil {
+		h.log.Error("h.cacheRepo.SaveServerSnapshot: %v", err)
+		return err
+	}
+
+	return nil
 }

@@ -17,7 +17,7 @@ type esRepository struct {
 	recordIdx   string
 }
 
-func NewESRepository(client *elasticsearch.Client, cfg *config.Config) domain.StateRepository {
+func NewESRepository(client *elasticsearch.Client, cfg *config.Config) domain.Repository {
 	return &esRepository{
 		client:      client,
 		snapshotIdx: cfg.Elasticsearch.SnapshotIndex,
@@ -25,17 +25,110 @@ func NewESRepository(client *elasticsearch.Client, cfg *config.Config) domain.St
 	}
 }
 
-func (r *esRepository) SaveServerSnapshot(ctx context.Context, snapshot *domain.ServerSnapshot) error {
-	ssbytes, err := json.Marshal(snapshot)
+func (r *esRepository) GetAllServersSnapshot(ctx context.Context) (*[]domain.Server, error) {
+	var servers []domain.Server
+
+	query := `{
+		"size": 10000,
+		"query": {
+			"match_all": {}
+		}
+	}`
+
+	res, err := r.client.Search(
+		r.client.Search.WithContext(ctx),
+		r.client.Search.WithIndex(r.snapshotIdx),
+		r.client.Search.WithBody(strings.NewReader(query)),
+		r.client.Search.WithTrackTotalHits(true),
+		r.client.Search.WithPretty(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return nil, fmt.Errorf("res.IsError.Decode: %s", err)
+		} else {
+			return nil, fmt.Errorf("res.IsError [%s] %s: %s",
+				res.Status(),
+				e["error"].(map[string]interface{})["type"],
+				e["error"].(map[string]interface{})["reason"],
+			)
+		}
+	}
+
+	var rBody map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&rBody); err != nil {
+		return nil, err
+	}
+
+	hits := rBody["hits"].(map[string]interface{})["hits"].([]interface{})
+	for _, hit := range hits {
+		source := hit.(map[string]interface{})["_source"]
+		sourceBytes, err := json.Marshal(source)
+		if err != nil {
+			return nil, err
+		}
+
+		var server domain.Server
+		if err := json.Unmarshal(sourceBytes, &server); err != nil {
+			return nil, err
+		}
+
+		servers = append(servers, server)
+	}
+
+	return &servers, nil
+}
+
+func (r *esRepository) SaveServerSnapshot(ctx context.Context, server *domain.Server) error {
+	sbytes, err := json.Marshal(server)
 	if err != nil {
 		return err
 	}
 
 	res, err := r.client.Index(
 		r.snapshotIdx,
-		strings.NewReader(string(ssbytes)),
+		strings.NewReader(string(sbytes)),
 		r.client.Index.WithContext(ctx),
-		r.client.Index.WithDocumentID(snapshot.ServerID),
+		r.client.Index.WithDocumentID(server.ServerID),
+		r.client.Index.WithRefresh("true"),
+	)
+
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return fmt.Errorf("res.IsError.Decode: %s", err)
+		} else {
+			return fmt.Errorf("res.IsError [%s] %s: %s",
+				res.Status(),
+				e["error"].(map[string]interface{})["type"],
+				e["error"].(map[string]interface{})["reason"],
+			)
+		}
+	}
+
+	return nil
+}
+
+func (r *esRepository) IndexServerState(ctx context.Context, server *domain.Server) error {
+	sbytes, err := json.Marshal(server)
+	if err != nil {
+		return err
+	}
+
+	res, err := r.client.Index(
+		r.recordIdx,
+		strings.NewReader(string(sbytes)),
+		r.client.Index.WithContext(ctx),
 		r.client.Index.WithRefresh("true"),
 	)
 

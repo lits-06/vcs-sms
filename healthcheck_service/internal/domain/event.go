@@ -3,5 +3,5 @@ package domain
 import "context"
 
 type EventPublisher interface {
-	PublishStateChange(ctx context.Context, state *ServerState) error
+	PublishStateChange(ctx context.Context, server *Server) error
 }
