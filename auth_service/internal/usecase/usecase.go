@@ -9,8 +9,9 @@ import (
 	"github.com/lits-06/vcs-sms/auth_service/config"
 	"github.com/lits-06/vcs-sms/auth_service/internal/domain"
 	"github.com/lits-06/vcs-sms/auth_service/internal/dto"
-	"github.com/lits-06/vcs-sms/pkg-old/utils"
+	jwtpkg "github.com/lits-06/vcs-sms/pkg/jwt"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
+	"github.com/lits-06/vcs-sms/pkg/utils"
 	userpb "github.com/lits-06/vcs-sms/proto"
 	"github.com/opentracing/opentracing-go"
 )
@@ -41,7 +42,7 @@ func (a *authUsecase) Login(ctx context.Context, email, password string) (string
 	user := dto.UserResponseFromGrpc(res.User)
 
 	hashedPassword := user.Password
-	err = utils.CheckPasswordHash(password, hashedPassword)
+	err = utils.VerifyPassword(password, hashedPassword)
 	if err != nil {
 		return "", "", tracing.TraceWithErr(span, fmt.Errorf("utils.CheckPasswordHash: %w", err))
 	}
@@ -75,7 +76,7 @@ func (a *authUsecase) GenerateAccessToken(ctx context.Context, email string, sco
 	span, ctx := opentracing.StartSpanFromContext(ctx, "authUsecase.GenerateAccessToken")
 	defer span.Finish()
 
-	accessClaim := &domain.AccessClaim{
+	accessClaim := &jwtpkg.AccessClaim{
 		Email:  email,
 		Scopes: scopes,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -96,7 +97,7 @@ func (a *authUsecase) GenerateRefreshToken(ctx context.Context) (string, error) 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "authUsecase.GenerateRefreshToken")
 	defer span.Finish()
 
-	refreshClaim := &domain.RefreshClaim{
+	refreshClaim := &jwtpkg.RefreshClaim{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(a.cfg.JWT.RefreshTTL)),
 		},
@@ -116,7 +117,7 @@ func (a *authUsecase) RefreshAccessToken(ctx context.Context, refreshToken strin
 	defer span.Finish()
 
 	// Parse and validate the refresh token
-	token, err := jwt.ParseWithClaims(refreshToken, &domain.RefreshClaim{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(refreshToken, &jwtpkg.RefreshClaim{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -126,7 +127,7 @@ func (a *authUsecase) RefreshAccessToken(ctx context.Context, refreshToken strin
 		return "", tracing.TraceWithErr(span, fmt.Errorf("jwt.ParseWithClaims: %w", err))
 	}
 
-	_, ok := token.Claims.(*domain.RefreshClaim)
+	_, ok := token.Claims.(*jwtpkg.RefreshClaim)
 	if !ok || !token.Valid {
 		return "", tracing.TraceWithErr(span, fmt.Errorf("invalid token claims"))
 	}
@@ -168,7 +169,7 @@ func (a *authUsecase) RevokeAccessToken(ctx context.Context, accessToken string)
 	defer span.Finish()
 
 	// Parse the token to get its expiration time
-	parsedToken, err := jwt.ParseWithClaims(accessToken, &domain.AccessClaim{}, func(token *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.ParseWithClaims(accessToken, &jwtpkg.AccessClaim{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -178,12 +179,12 @@ func (a *authUsecase) RevokeAccessToken(ctx context.Context, accessToken string)
 		return tracing.TraceWithErr(span, fmt.Errorf("jwt.ParseWithClaims: %w", err))
 	}
 
-	claims, ok := parsedToken.Claims.(*domain.AccessClaim)
+	claims, ok := parsedToken.Claims.(*jwtpkg.AccessClaim)
 	if !ok || !parsedToken.Valid {
 		return tracing.TraceWithErr(span, fmt.Errorf("invalid token claims"))
 	}
 
-	expiration := claims.ExpiresAt.Unix()
+	expiration := claims.ExpiresAt.Unix() - time.Now().Unix()
 
 	// Add the token to the blacklist
 	err = a.cacheRepo.AddBlacklist(ctx, accessToken, expiration)
@@ -199,7 +200,7 @@ func (a *authUsecase) RevokeRefreshToken(ctx context.Context, refreshToken strin
 	defer span.Finish()
 
 	// Parse the token to get its expiration time
-	parsedToken, err := jwt.ParseWithClaims(refreshToken, &domain.RefreshClaim{}, func(token *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.ParseWithClaims(refreshToken, &jwtpkg.RefreshClaim{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -209,12 +210,12 @@ func (a *authUsecase) RevokeRefreshToken(ctx context.Context, refreshToken strin
 		return tracing.TraceWithErr(span, fmt.Errorf("jwt.ParseWithClaims: %w", err))
 	}
 
-	claims, ok := parsedToken.Claims.(*domain.RefreshClaim)
+	claims, ok := parsedToken.Claims.(*jwtpkg.RefreshClaim)
 	if !ok || !parsedToken.Valid {
 		return tracing.TraceWithErr(span, fmt.Errorf("invalid token claims"))
 	}
 
-	expiration := claims.ExpiresAt.Unix()
+	expiration := claims.ExpiresAt.Unix() - time.Now().Unix()
 
 	// Add the token to the blacklist
 	err = a.cacheRepo.AddBlacklist(ctx, refreshToken, expiration)
