@@ -10,6 +10,7 @@ type UseCase interface {
 	ViewServer(ctx context.Context, req *QueryServerRequest) (*QueryServerResponse, error)
 	UpdateServer(ctx context.Context, req *UpdateServerRequest) error
 	DeleteServer(ctx context.Context, serverID string) error
+	UpdateServerStatus(ctx context.Context, serverID string, status ServerStatus) error
 
 	ImportServersFromExcel(ctx context.Context, file multipart.File) (*ImportResponse, error)
 	ExportServersToExcel(ctx context.Context, req *QueryServerRequest) ([]byte, error)

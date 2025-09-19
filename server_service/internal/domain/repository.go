@@ -12,6 +12,7 @@ type Repository interface {
 	GetByName(ctx context.Context, name string) (*Server, error)
 	Update(ctx context.Context, server *Server) error
 	Delete(ctx context.Context, id string) error
+	UpdateStatus(ctx context.Context, id string, status ServerStatus) error
 
 	// Query operations
 	List(ctx context.Context, filter ServerFilter, sort ServerSort, pagination ServerPagination) (*[]Server, int, error)

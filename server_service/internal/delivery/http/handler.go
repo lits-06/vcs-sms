@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lits-06/vcs-sms/pkg/logger"
+	"github.com/lits-06/vcs-sms/pkg/middleware"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/server_service/internal/domain"
 	"github.com/opentracing/opentracing-go"
@@ -14,12 +15,14 @@ import (
 type serverHandler struct {
 	log           logger.Logger
 	serverUsecase domain.UseCase
+	middleware    *middleware.AuthMiddleware
 }
 
-func NewServerHandler(log logger.Logger, serverUsecase domain.UseCase) *serverHandler {
+func NewServerHandler(log logger.Logger, serverUsecase domain.UseCase, middleware *middleware.AuthMiddleware) *serverHandler {
 	return &serverHandler{
 		log:           log,
 		serverUsecase: serverUsecase,
+		middleware:    middleware,
 	}
 }
 
@@ -160,4 +163,3 @@ func (h *serverHandler) ExportServersToExcel(c *gin.Context) {
 	c.Data(http.StatusOK, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer)
 	h.log.Info("Servers exported successfully")
 }
-

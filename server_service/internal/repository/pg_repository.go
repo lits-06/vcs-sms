@@ -89,6 +89,23 @@ func (r *serverRepository) Update(ctx context.Context, srv *domain.Server) error
 	return nil
 }
 
+func (r *serverRepository) UpdateStatus(ctx context.Context, id string, status domain.ServerStatus) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.UpdateStatus")
+	defer span.Finish()
+
+	result := r.db.WithContext(ctx).Model(&domain.Server{}).Where("id = ?", id).Update("status", status)
+
+	if result.Error != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to update server status: %w", result.Error))
+	}
+
+	if result.RowsAffected == 0 {
+		return tracing.TraceWithErr(span, fmt.Errorf("server with ID %s not found", id))
+	}
+
+	return nil
+}
+
 func (r *serverRepository) Delete(ctx context.Context, id string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.Delete")
 	defer span.Finish()

@@ -13,8 +13,8 @@ import (
 )
 
 type serverUsecase struct {
-	serverRepo     domain.Repository
-	cacheRepo      domain.CacheRepository
+	serverRepo domain.Repository
+	cacheRepo  domain.CacheRepository
 }
 
 func NewServerUsecase(serverRepo domain.Repository, cacheRepo domain.CacheRepository) domain.UseCase {
@@ -316,4 +316,16 @@ func (uc *serverUsecase) ExportServersToExcel(ctx context.Context, req *domain.Q
 	}
 
 	return buffer.Bytes(), nil
+}
+
+func (uc *serverUsecase) UpdateServerStatus(ctx context.Context, serverID string, status domain.ServerStatus) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverUsecase.UpdateServerStatus")
+	defer span.Finish()
+
+	err := uc.serverRepo.UpdateStatus(ctx, serverID, status)
+	if err != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to update server status: %w", err))
+	}
+
+	return nil
 }
