@@ -1,0 +1,425 @@
+definitions:
+  domain.Server:
+    properties:
+      created_at:
+        description: Creation timestamp
+        example: "2023-01-01T00:00:00Z"
+        type: string
+      ipv4:
+        description: IPv4 address
+        example: 192.168.1.100
+        type: string
+      name:
+        description: Server name
+        example: web-server-01
+        type: string
+      port:
+        description: Port number
+        example: 80
+        maximum: 65535
+        minimum: 1024
+        type: integer
+      server_id:
+        description: Server ID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      status:
+        description: Server status
+        enum:
+        - "ON"
+        - "OFF"
+        example: "ON"
+        type: string
+      updated_at:
+        description: Last update timestamp
+        example: "2023-01-01T00:00:00Z"
+        type: string
+    required:
+    - name
+    type: object
+  dto.CreateServerRequest:
+    properties:
+      ipv4:
+        description: IPv4 address
+        example: 192.168.1.100
+        type: string
+      name:
+        description: Server name
+        example: web-server-01
+        type: string
+      port:
+        description: Port number
+        example: 80
+        maximum: 65535
+        minimum: 1
+        type: integer
+      status:
+        description: Server status
+        enum:
+        - "ON"
+        - "OFF"
+        example: "ON"
+        type: string
+    required:
+    - ipv4
+    - name
+    - port
+    - status
+    type: object
+  dto.UpdateServerRequest:
+    properties:
+      id:
+        description: Server ID
+        example: uuid-string
+        type: string
+      ipv4:
+        description: IPv4 address
+        example: 192.168.1.101
+        type: string
+      name:
+        description: Server name
+        example: updated-server-name
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /servers:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve servers with optional filtering, sorting and pagination
+      parameters:
+      - description: Filter by server name
+        in: query
+        name: name
+        type: string
+      - description: Filter by server status (ON/OFF)
+        in: query
+        name: status
+        type: string
+      - description: Filter by IPv4 address
+        in: query
+        name: ipv4
+        type: string
+      - description: Pagination offset
+        in: query
+        name: from
+        type: integer
+      - description: Pagination limit
+        in: query
+        name: to
+        type: integer
+      - description: Sort by field (name, status, created_at, updated_at)
+        in: query
+        name: sort
+        type: string
+      - description: Sort order (asc, desc)
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of servers
+          schema:
+            items:
+              $ref: '#/definitions/domain.Server'
+            type: array
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to view server
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: View servers
+      tags:
+      - Server
+    post:
+      consumes:
+      - application/json
+      description: Create a new server with specified name, status, IPv4 address and
+        port
+      parameters:
+      - description: Server data
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateServerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Server created successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to create server
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new server
+      tags:
+      - Server
+    put:
+      consumes:
+      - application/json
+      description: Update server information including name and IPv4 address
+      parameters:
+      - description: Server update data
+        in: body
+        name: server
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateServerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Server updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to update server
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a server
+      tags:
+      - Server
+  /servers/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a server by its ID
+      parameters:
+      - description: Server ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Server deleted successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Server ID is required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to delete server
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a server
+      tags:
+      - Server
+  /servers/export:
+    get:
+      consumes:
+      - application/json
+      description: Export servers to an Excel file with optional filtering
+      parameters:
+      - description: Filter by server name
+        in: query
+        name: name
+        type: string
+      - description: Filter by server status (ON/OFF)
+        in: query
+        name: status
+        type: string
+      - description: Filter by IPv4 address
+        in: query
+        name: ipv4
+        type: string
+      - description: Pagination offset
+        in: query
+        name: from
+        type: integer
+      - description: Pagination limit
+        in: query
+        name: to
+        type: integer
+      - description: Sort by field (name, status, created_at, updated_at)
+        in: query
+        name: sort
+        type: string
+      - description: Sort order (asc, desc)
+        in: query
+        name: order
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: Excel file with servers data
+          schema:
+            type: file
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to export servers
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Export servers to Excel
+      tags:
+      - Server
+  /servers/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Import servers from an uploaded Excel file
+      parameters:
+      - description: Excel file to import
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Import result with success and failure counts
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: File is required
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to import servers
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Import servers from Excel
+      tags:
+      - Server
+swagger: "2.0"

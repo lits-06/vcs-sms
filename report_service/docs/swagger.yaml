@@ -1,0 +1,63 @@
+definitions:
+  dto.UptimeRequest:
+    properties:
+      email:
+        type: string
+      end_date:
+        type: string
+      start_date:
+        type: string
+    required:
+    - email
+    - end_date
+    - start_date
+    type: object
+info:
+  contact: {}
+paths:
+  /reports:
+    post:
+      consumes:
+      - application/json
+      description: Create uptime report for specific date range and send via email
+      parameters:
+      - description: Report request payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UptimeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Report created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create uptime report
+      tags:
+      - Reports
+swagger: "2.0"
