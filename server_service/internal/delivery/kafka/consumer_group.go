@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/lits-06/vcs-sms/pkg/logger"
-	"github.com/lits-06/vcs-sms/server_service/config"
 	"github.com/lits-06/vcs-sms/server_service/internal/domain"
 	"github.com/segmentio/kafka-go"
 	"github.com/segmentio/kafka-go/compress"
@@ -15,16 +14,14 @@ type ConsumerGroup struct {
 	Brokers  []string
 	GroupID  string
 	log      logger.Logger
-	cfg      *config.Config
 	serverUC domain.UseCase
 }
 
-func NewConsumerGroup(brokers []string, groupID string, log logger.Logger, cfg *config.Config, serverUC domain.UseCase) *ConsumerGroup {
+func NewConsumerGroup(brokers []string, groupID string, log logger.Logger, serverUC domain.UseCase) *ConsumerGroup {
 	return &ConsumerGroup{
 		Brokers:  brokers,
 		GroupID:  groupID,
 		log:      log,
-		cfg:      cfg,
 		serverUC: serverUC,
 	}
 }
@@ -98,5 +95,5 @@ func (cg *ConsumerGroup) consumeUpdateServerStatus(
 }
 
 func (cg *ConsumerGroup) RunConsumers(ctx context.Context, cancel context.CancelFunc) {
-	go cg.consumeUpdateServerStatus(ctx, cancel, serverGroupID, stateTopic, stateWorkerCount)
+	go cg.consumeUpdateServerStatus(ctx, cancel, updateGroupID, updateTopic, updateWorkerCount)
 }

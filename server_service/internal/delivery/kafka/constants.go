@@ -17,10 +17,12 @@ const (
 	writerRequiredAcks = -1
 	writerMaxAttempts  = 3
 
-	stateTopic       = "server-state"
-	stateWorkerCount = 3
+	updateTopic       = "server-update"
+	updateGroupID     = "update_group"
+	updateWorkerCount = 3
 
 	deadLetterQueueTopic = "dead-letter-queue"
 
-	serverGroupID = "server_group"
+	createTopic = "server-create"
+	deleteTopic = "server-delete"
 )

@@ -2,9 +2,13 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/server_service/config"
+	"github.com/lits-06/vcs-sms/server_service/internal/server"
+
+	_ "github.com/lits-06/vcs-sms/server_service/docs"
 )
 
 func main() {
@@ -17,7 +21,7 @@ func main() {
 
 	appLogger := logger.NewAppLogger(cfg.Logger)
 	appLogger.InitLogger()
-	appLogger.WithName("ServerService")
+	appLogger.WithName("Server Service")
 
 	s := server.NewServer(appLogger, cfg)
 	appLogger.Fatal(s.Run())

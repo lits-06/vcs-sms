@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/server_service/internal/domain"
@@ -21,14 +22,14 @@ func NewServerRepository(db *gorm.DB) domain.Repository {
 	}
 }
 
-func (r *serverRepository) Create(ctx context.Context, srv *domain.Server) error {
+func (r *serverRepository) Create(ctx context.Context, srv *domain.Server) (*domain.Server, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.Create")
 	defer span.Finish()
 
 	if err := r.db.WithContext(ctx).Create(srv).Error; err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to create server: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to create server: %w", err))
 	}
-	return nil
+	return srv, nil
 }
 
 func (r *serverRepository) GetByID(ctx context.Context, id string) (*domain.Server, error) {
@@ -61,35 +62,29 @@ func (r *serverRepository) GetByName(ctx context.Context, name string) (*domain.
 	return &srv, nil
 }
 
-func (r *serverRepository) Update(ctx context.Context, srv *domain.Server) error {
+func (r *serverRepository) Update(ctx context.Context, id, name, ipv4 string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.Update")
 	defer span.Finish()
 
 	data := make(map[string]interface{})
-	if srv.Name != "" {
-		data["name"] = srv.Name
-	}
-	if srv.Status != "" {
-		data["status"] = srv.Status
-	}
-	if srv.IPv4 != "" {
-		data["ipv4"] = srv.IPv4
+	if name != "" {
+		data["name"] = name
 	}
 
-	result := r.db.WithContext(ctx).Model(srv).Where("id = ?", srv.ID).Updates(data)
+	if ipv4 != "" {
+		data["ipv4"] = ipv4
+	}
+
+	result := r.db.WithContext(ctx).Model(&domain.Server{}).Where("id = ?", id).Updates(data)
 
 	if result.Error != nil {
 		return tracing.TraceWithErr(span, fmt.Errorf("failed to update server: %w", result.Error))
 	}
 
-	if result.RowsAffected == 0 {
-		return tracing.TraceWithErr(span, fmt.Errorf("server with ID %s not found", srv.ID))
-	}
-
 	return nil
 }
 
-func (r *serverRepository) UpdateStatus(ctx context.Context, id string, status domain.ServerStatus) error {
+func (r *serverRepository) UpdateStatus(ctx context.Context, id string, status string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.UpdateStatus")
 	defer span.Finish()
 
@@ -123,7 +118,7 @@ func (r *serverRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *serverRepository) List(ctx context.Context, filter domain.ServerFilter, sort domain.ServerSort, pagination domain.ServerPagination) (*[]domain.Server, int, error) {
+func (r *serverRepository) List(ctx context.Context, name, status, ipv4 string, from, to int, sort, order string) (*[]domain.Server, int, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.List")
 	defer span.Finish()
 
@@ -132,7 +127,7 @@ func (r *serverRepository) List(ctx context.Context, filter domain.ServerFilter,
 
 	// Build base query with filters
 	query := r.db.WithContext(ctx).Model(&domain.Server{})
-	query = r.applyFilters(query, filter)
+	query = r.applyFilters(query, name, status, ipv4)
 
 	// Count total records
 	if err := query.Count(&total).Error; err != nil {
@@ -140,10 +135,10 @@ func (r *serverRepository) List(ctx context.Context, filter domain.ServerFilter,
 	}
 
 	// Apply sorting
-	query = r.applySorting(query, sort)
+	query = r.applySorting(query, sort, order)
 
 	// Apply pagination
-	query = r.applyPagination(query, pagination)
+	query = r.applyPagination(query, from, to)
 
 	// Execute query
 	if err := query.Find(&servers).Error; err != nil {
@@ -153,49 +148,49 @@ func (r *serverRepository) List(ctx context.Context, filter domain.ServerFilter,
 	return &servers, int(total), nil
 }
 
-func (r *serverRepository) applyFilters(query *gorm.DB, filter domain.ServerFilter) *gorm.DB {
-	if filter.Name != "" {
-		query = query.Where("name ILIKE ?", "%"+filter.Name+"%")
+func (r *serverRepository) applyFilters(query *gorm.DB, name, status, ipv4 string) *gorm.DB {
+	if name != "" {
+		query = query.Where("name ILIKE ?", "%"+name+"%")
 	}
 
-	if filter.Status != "" {
-		query = query.Where("status = ?", string(filter.Status))
+	if status != "" {
+		query = query.Where("status = ?", status)
 	}
 
-	if filter.IPv4 != "" {
-		query = query.Where("ipv4 = ?", filter.IPv4)
+	if ipv4 != "" {
+		query = query.Where("ipv4 = ?", ipv4)
 	}
 
 	return query
 }
 
-func (r *serverRepository) applySorting(query *gorm.DB, sort domain.ServerSort) *gorm.DB {
-	field := "created_at" // Default sort field
-	if sort.Sort != "" {
-		field = sort.Sort
+func (r *serverRepository) applySorting(query *gorm.DB, sort, order string) *gorm.DB {
+	fielddf := "created_at" // Default sort field
+	if sort != "" {
+		fielddf = sort
 	}
 
-	order := "ASC" // Default order
-	if sort.Order == domain.SortDesc {
-		order = "DESC"
+	orderdf := "ASC" // Default order
+	if strings.ToLower(order) == "desc" {
+		orderdf = "DESC"
 	}
 
-	return query.Order(fmt.Sprintf("%s %s", field, order))
+	return query.Order(fmt.Sprintf("%s %s", fielddf, orderdf))
 }
 
-func (r *serverRepository) applyPagination(query *gorm.DB, pagination domain.ServerPagination) *gorm.DB {
-	if pagination.To < pagination.From {
+func (r *serverRepository) applyPagination(query *gorm.DB, from, to int) *gorm.DB {
+	if to < from {
 		return query
 	}
 
-	if pagination.From > 0 {
-		query = query.Offset(pagination.From)
+	if from > 0 {
+		query = query.Offset(from)
 	}
 
-	if pagination.To > 0 {
-		limit := pagination.To
-		if pagination.From > 0 {
-			limit = pagination.To - pagination.From
+	if to > 0 {
+		limit := to
+		if from > 0 {
+			limit = to - from
 		}
 		query = query.Limit(limit)
 	}

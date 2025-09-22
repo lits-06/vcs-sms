@@ -1,6 +1,9 @@
 package domain
 
-const (
-	ErrServerExists       = "server already exists"
-	ErrServerNotFound     = "server not found"
+import "errors"
+
+var (
+	ErrServerExists       = errors.New("server already exists")
+	ErrNameExists         = errors.New("server name already exists")
+	ErrServerNotFound     = errors.New("server not found")
 )
