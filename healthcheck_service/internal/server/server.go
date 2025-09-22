@@ -18,7 +18,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type server struct{
+type server struct {
 	log logger.Logger
 	cfg *config.Config
 }
@@ -80,7 +80,7 @@ func (s *server) Run() error {
 	cacheRepo := repository.NewCacheRepository(redisClient, s.cfg)
 	healthCheckUC := usecase.NewHealthCheckUseCase(s.cfg, s.log, esRepo, cacheRepo, healthCheckProducer)
 
-	healthCheckCG := kafka.NewConsumerGroup(s.cfg.Kafka.Brokers, s.cfg.Kafka.GroupID, s.log, s.cfg, healthCheckUC)
+	healthCheckCG := kafka.NewConsumerGroup(s.cfg.Kafka.Brokers, s.log, s.cfg, healthCheckUC)
 	healthCheckCG.RunConsumers(ctx, cancel)
 
 	go func() {

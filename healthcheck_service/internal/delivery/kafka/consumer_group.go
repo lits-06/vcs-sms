@@ -14,16 +14,14 @@ import (
 
 type ConsumerGroup struct {
 	Brokers       []string
-	GroupID       string
 	log           logger.Logger
 	cfg           *config.Config
 	healthCheckUC domain.UseCase
 }
 
-func NewConsumerGroup(brokers []string, groupID string, log logger.Logger, cfg *config.Config, healthCheckUC domain.UseCase) *ConsumerGroup {
+func NewConsumerGroup(brokers []string, log logger.Logger, cfg *config.Config, healthCheckUC domain.UseCase) *ConsumerGroup {
 	return &ConsumerGroup{
 		Brokers:       brokers,
-		GroupID:       groupID,
 		log:           log,
 		cfg:           cfg,
 		healthCheckUC: healthCheckUC,
@@ -65,38 +63,6 @@ func (cg *ConsumerGroup) getNewKafkaWriter(topic string) *kafka.Writer {
 	}
 	return w
 }
-
-// func (cg *ConsumerGroup) consumeIndexServerState(
-// 	ctx context.Context,
-// 	cancel context.CancelFunc,
-// 	groupID string,
-// 	topic string,
-// 	workerNum int,
-// ) {
-// 	r := cg.getNewKafkaReader(cg.Brokers, topic, groupID)
-// 	defer cancel()
-// 	defer func() {
-// 		if err := r.Close(); err != nil {
-// 			cg.log.Error("r.Close: %v", err)
-// 		}
-// 	}()
-
-// 	w := cg.getNewKafkaWriter(deadLetterQueueTopic)
-// 	defer func() {
-// 		if err := w.Close(); err != nil {
-// 			cg.log.Error("w.Close: %v", err)
-// 			cancel()
-// 		}
-// 	}()
-
-// 	cg.log.Info("Starting consumer group: %v", r.Config().GroupID)
-// 	wg := &sync.WaitGroup{}
-// 	for i := 0; i < workerNum; i++ {
-// 		wg.Add(1)
-// 		go cg.indexWorker(ctx, cancel, wg, r, w, i)
-// 	}
-// 	wg.Wait()
-// }
 
 func (cg *ConsumerGroup) consumerCreateServer(
 	ctx context.Context,
