@@ -5,7 +5,7 @@ import (
 )
 
 type Config struct {
-	Port string
+	Port string `mapstructure:"port"`
 }
 
 func NewGRPCServer() *grpc.Server {

@@ -5,7 +5,7 @@ import (
 )
 
 type Config struct {
-	SecretKey string
+	SecretKey string `mapstructure:"secretKey"`
 }
 
 type AccessClaim struct {
