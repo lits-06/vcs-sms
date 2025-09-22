@@ -22,7 +22,6 @@ import (
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/server_service/internal/domain"
 	"github.com/lits-06/vcs-sms/server_service/internal/dto"
-	"github.com/opentracing/opentracing-go"
 )
 
 type serverHandler struct {
@@ -41,6 +40,7 @@ func NewServerHandler(log logger.Logger, serverUsecase domain.UseCase, middlewar
 
 // CreateServer creates a new server
 // CreateServer godoc
+//
 //	@Summary		Create a new server
 //	@Description	Create a new server with specified name, status, IPv4 address and port
 //	@Tags			Server
@@ -55,7 +55,7 @@ func NewServerHandler(log logger.Logger, serverUsecase domain.UseCase, middlewar
 //	@Security		BearerAuth
 //	@Router			/servers [post]
 func (h *serverHandler) CreateServer(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "serverHandler.CreateServer")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "serverHandler.CreateServer")
 	defer span.Finish()
 
 	var req dto.CreateServerRequest
@@ -77,6 +77,7 @@ func (h *serverHandler) CreateServer(c *gin.Context) {
 
 // ViewServer retrieves servers based on query parameters
 // ViewServer godoc
+//
 //	@Summary		View servers
 //	@Description	Retrieve servers with optional filtering, sorting and pagination
 //	@Tags			Server
@@ -97,7 +98,7 @@ func (h *serverHandler) CreateServer(c *gin.Context) {
 //	@Security		BearerAuth
 //	@Router			/servers [get]
 func (h *serverHandler) ViewServer(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "serverHandler.ViewServer")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "serverHandler.ViewServer")
 	defer span.Finish()
 
 	var req dto.QueryServerRequest
@@ -119,6 +120,7 @@ func (h *serverHandler) ViewServer(c *gin.Context) {
 
 // UpdateServer updates an existing server
 // UpdateServer godoc
+//
 //	@Summary		Update a server
 //	@Description	Update server information including name and IPv4 address
 //	@Tags			Server
@@ -133,7 +135,7 @@ func (h *serverHandler) ViewServer(c *gin.Context) {
 //	@Security		BearerAuth
 //	@Router			/servers [put]
 func (h *serverHandler) UpdateServer(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "serverHandler.UpdateServer")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "serverHandler.UpdateServer")
 	defer span.Finish()
 
 	var req dto.UpdateServerRequest
@@ -154,6 +156,7 @@ func (h *serverHandler) UpdateServer(c *gin.Context) {
 
 // DeleteServer deletes a server by ID
 // DeleteServer godoc
+//
 //	@Summary		Delete a server
 //	@Description	Delete a server by its ID
 //	@Tags			Server
@@ -168,7 +171,7 @@ func (h *serverHandler) UpdateServer(c *gin.Context) {
 //	@Security		BearerAuth
 //	@Router			/servers/{id} [delete]
 func (h *serverHandler) DeleteServer(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "serverHandler.DeleteServer")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "serverHandler.DeleteServer")
 	defer span.Finish()
 
 	serverID := c.Param("id")
@@ -187,6 +190,7 @@ func (h *serverHandler) DeleteServer(c *gin.Context) {
 
 // ImportServersFromExcel imports servers from Excel file
 // ImportServersFromExcel godoc
+//
 //	@Summary		Import servers from Excel
 //	@Description	Import servers from an uploaded Excel file
 //	@Tags			Server
@@ -201,7 +205,7 @@ func (h *serverHandler) DeleteServer(c *gin.Context) {
 //	@Security		BearerAuth
 //	@Router			/servers/import [post]
 func (h *serverHandler) ImportServersFromExcel(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "serverHandler.ImportServersFromExcel")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "serverHandler.ImportServersFromExcel")
 	defer span.Finish()
 
 	// Get file from form
@@ -236,6 +240,7 @@ func (h *serverHandler) ImportServersFromExcel(c *gin.Context) {
 
 // ExportServersToExcel exports servers to Excel file
 // ExportServersToExcel godoc
+//
 //	@Summary		Export servers to Excel
 //	@Description	Export servers to an Excel file with optional filtering
 //	@Tags			Server
@@ -256,7 +261,7 @@ func (h *serverHandler) ImportServersFromExcel(c *gin.Context) {
 //	@Security		BearerAuth
 //	@Router			/servers/export [get]
 func (h *serverHandler) ExportServersToExcel(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "serverHandler.ExportServersToExcel")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "serverHandler.ExportServersToExcel")
 	defer span.Finish()
 
 	var req dto.QueryServerRequest

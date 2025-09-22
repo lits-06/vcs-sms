@@ -12,15 +12,13 @@ import (
 
 type ConsumerGroup struct {
 	Brokers  []string
-	GroupID  string
 	log      logger.Logger
 	serverUC domain.UseCase
 }
 
-func NewConsumerGroup(brokers []string, groupID string, log logger.Logger, serverUC domain.UseCase) *ConsumerGroup {
+func NewConsumerGroup(brokers []string, log logger.Logger, serverUC domain.UseCase) *ConsumerGroup {
 	return &ConsumerGroup{
 		Brokers:  brokers,
-		GroupID:  groupID,
 		log:      log,
 		serverUC: serverUC,
 	}

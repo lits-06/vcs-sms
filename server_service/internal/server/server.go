@@ -21,8 +21,8 @@ import (
 )
 
 type server struct {
-	log         logger.Logger
-	cfg         *config.Config
+	log logger.Logger
+	cfg *config.Config
 }
 
 func NewServer(log logger.Logger, cfg *config.Config) *server {
@@ -69,7 +69,7 @@ func (s *server) Run() error {
 	router := gin.Default()
 	serverHandler.RegisterRoutes(router)
 
-	serverCG := kafka.NewConsumerGroup(s.cfg.Kafka.Brokers, s.cfg.Kafka.GroupID, s.log, serverUsecase)
+	serverCG := kafka.NewConsumerGroup(s.cfg.Kafka.Brokers, s.log, serverUsecase)
 	serverCG.RunConsumers(ctx, cancel)
 
 	go func() {
