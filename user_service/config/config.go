@@ -21,13 +21,13 @@ func init() {
 }
 
 type Config struct {
-	ServiceName     string           `mapstructure:"serviceName"`
-	Port            string           `mapstructure:"port"`
-	Logger          *logger.Config   `mapstructure:"logger"`
-	GRPC            *grpc.Config     `mapstructure:"grpc"`
-	Postgres       *postgres.Config `mapstructure:"postgres"`
-	Jaeger          *tracing.Config  `mapstructure:"jaeger"`
-	JWT             jwt.Config       `mapstructure:"jwt"`
+	ServiceName string           `mapstructure:"serviceName"`
+	Port        string           `mapstructure:"port"`
+	Logger      *logger.Config   `mapstructure:"logger"`
+	GRPC        *grpc.Config     `mapstructure:"grpc"`
+	Postgres    *postgres.Config `mapstructure:"postgres"`
+	Jaeger      *tracing.Config  `mapstructure:"jaeger"`
+	JWT         jwt.Config       `mapstructure:"jwt"`
 }
 
 func InitConfig() (*Config, error) {
@@ -40,7 +40,7 @@ func InitConfig() (*Config, error) {
 			if err != nil {
 				return nil, fmt.Errorf("os.Getwd: %w", err)
 			}
-			configPath = fmt.Sprintf("%s/server_service/config/config.yaml", getwd)
+			configPath = fmt.Sprintf("%s/user_service/config/config.yaml", getwd)
 		}
 	}
 

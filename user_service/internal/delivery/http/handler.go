@@ -21,7 +21,6 @@ import (
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/user_service/internal/domain"
 	"github.com/lits-06/vcs-sms/user_service/internal/dto"
-	"github.com/opentracing/opentracing-go"
 )
 
 type userHandler struct {
@@ -50,7 +49,7 @@ func NewUserHandler(log logger.Logger, userUsecase domain.UseCase, middleware *m
 // @Failure 500 {object} map[string]string "Failed to register user"
 // @Router /register [post]
 func (h *userHandler) Register(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "userHandler.Register")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "userHandler.Register")
 	defer span.Finish()
 
 	var req dto.RegisterRequest
@@ -85,7 +84,7 @@ func (h *userHandler) Register(c *gin.Context) {
 // @Failure 500 {object} map[string]string "Failed to add user scope"
 // @Router /user/scopes [post]
 func (h *userHandler) AddUserScope(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "userHandler.AddUserScope")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "userHandler.AddUserScope")
 	defer span.Finish()
 
 	var req dto.AddUserScopeRequest
@@ -120,7 +119,7 @@ func (h *userHandler) AddUserScope(c *gin.Context) {
 // @Failure 500 {object} map[string]string "Failed to remove user scope"
 // @Router /user/scopes [delete]
 func (h *userHandler) RemoveUserScope(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "userHandler.RemoveUserScope")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "userHandler.RemoveUserScope")
 	defer span.Finish()
 
 	var req dto.RemoveUserScopeRequest

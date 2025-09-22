@@ -8,7 +8,6 @@ import (
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	userpb "github.com/lits-06/vcs-sms/proto"
 	"github.com/lits-06/vcs-sms/user_service/internal/domain"
-	"github.com/opentracing/opentracing-go"
 )
 
 type userService struct {
@@ -25,7 +24,7 @@ func NewUserService(log logger.Logger, userUC domain.UseCase) *userService {
 }
 
 func (s *userService) GetUserByEmail(ctx context.Context, req *userpb.GetUserByEmailRequest) (*userpb.GetUserByEmailResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "userService.GetUserByEmail")
+	ctx, span := tracing.StartGrpcServerTracerSpan(ctx, "userService.GetUserByEmail")
 	defer span.Finish()
 
 	user, err := s.userUC.GetUserByEmail(ctx, req.Email)
