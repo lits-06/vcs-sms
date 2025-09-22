@@ -20,34 +20,34 @@ func NewUserUsecase(userRepo domain.Repository) domain.UseCase {
 	}
 }
 
-func (u *userUsecase) Register(ctx context.Context, req *domain.RegisterRequest) (*domain.User, error) {
+func (u *userUsecase) Register(ctx context.Context, email, username, password string) (*domain.User, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "userUsecase.Register")
 	defer span.Finish()
 
-	existUser, err := u.userRepo.GetUserByEmail(ctx, req.Email)
+	existUser, err := u.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get user by email: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("userRepo.GetUserByEmail: %w", err))
 	}
 
 	if existUser != nil {
 		return nil, tracing.TraceWithErr(span, domain.ErrUserExists)
 	}
 
-	hashedPassword, err := utils.HashPassword(req.Password)
+	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
-		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to hash password: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("utils.HashPassword: %w", err))
 	}
 
 	user := &domain.User{
-		Email:    req.Email,
-		Username: req.Username,
+		Email:    email,
+		Username: username,
 		Password: hashedPassword,
 		Scopes:   domain.DefaultScopes(),
 	}
 
 	createdUser, err := u.userRepo.CreateUser(ctx, user)
 	if err != nil {
-		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to create user: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("userRepo.CreateUser: %w", err))
 	}
 
 	return &domain.User{
@@ -62,7 +62,7 @@ func (u *userUsecase) GetUserByEmail(ctx context.Context, email string) (*domain
 
 	user, err := u.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get user by email: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("userRepo.GetUserByEmail: %w", err))
 	}
 	if user == nil {
 		return nil, tracing.TraceWithErr(span, domain.ErrUserNotFound)
@@ -71,13 +71,13 @@ func (u *userUsecase) GetUserByEmail(ctx context.Context, email string) (*domain
 	return user, nil
 }
 
-func (u *userUsecase) AddUserScope(ctx context.Context, userID string, scopes []string) error {
+func (u *userUsecase) AddUserScope(ctx context.Context, email string, scopes []string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "userUsecase.AddUserScope")
 	defer span.Finish()
 
-	user, err := u.userRepo.GetUserByID(ctx, userID)
+	user, err := u.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to get user by ID: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("userRepo.GetUserByEmail: %w", err))
 	}
 	if user == nil {
 		return tracing.TraceWithErr(span, domain.ErrUserNotFound)
@@ -89,21 +89,21 @@ func (u *userUsecase) AddUserScope(ctx context.Context, userID string, scopes []
 		}
 	}
 
-	err = u.userRepo.AddUserScopes(ctx, userID, scopes)
+	err = u.userRepo.AddUserScopes(ctx, email, scopes)
 	if err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to add user scopes: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("userRepo.AddUserScopes: %w", err))
 	}
 
 	return nil
 }
 
-func (u *userUsecase) RemoveUserScope(ctx context.Context, userID string, scopes []string) error {
+func (u *userUsecase) RemoveUserScope(ctx context.Context, email string, scopes []string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "userUsecase.RemoveUserScope")
 	defer span.Finish()
 
-	user, err := u.userRepo.GetUserByID(ctx, userID)
+	user, err := u.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to get user by ID: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("userRepo.GetUserByEmail: %w", err))
 	}
 	if user == nil {
 		return tracing.TraceWithErr(span, domain.ErrUserNotFound)
@@ -115,9 +115,9 @@ func (u *userUsecase) RemoveUserScope(ctx context.Context, userID string, scopes
 		}
 	}
 
-	err = u.userRepo.RemoveUserScopes(ctx, userID, scopes)
+	err = u.userRepo.RemoveUserScopes(ctx, email, scopes)
 	if err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to remove user scopes: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("userRepo.RemoveUserScopes: %w", err))
 	}
 
 	return nil

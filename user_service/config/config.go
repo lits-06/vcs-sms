@@ -6,13 +6,11 @@ import (
 	"os"
 
 	"github.com/lits-06/vcs-sms/pkg/constants"
-	"github.com/lits-06/vcs-sms/pkg/kafka"
+	"github.com/lits-06/vcs-sms/pkg/grpc"
+	"github.com/lits-06/vcs-sms/pkg/jwt"
 	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/pkg/postgres"
-	"github.com/lits-06/vcs-sms/pkg/probes"
-	"github.com/lits-06/vcs-sms/pkg/redis"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
-	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 )
 
@@ -24,30 +22,12 @@ func init() {
 
 type Config struct {
 	ServiceName     string           `mapstructure:"serviceName"`
+	Port            string           `mapstructure:"port"`
 	Logger          *logger.Config   `mapstructure:"logger"`
-	KafkaTopics     KafkaTopics      `mapstructure:"kafkaTopics"`
-	GRPC            GRPC             `mapstructure:"grpc"`
-	Postgresql      *postgres.Config `mapstructure:"postgres"`
-	Kafka           *kafka.Config    `mapstructure:"kafka"`
-	Redis           *redis.Config    `mapstructure:"redis"`
-	Probes          probes.Config    `mapstructure:"probes"`
-	ServiceSettings ServiceSettings  `mapstructure:"serviceSettings"`
+	GRPC            *grpc.Config     `mapstructure:"grpc"`
+	Postgres       *postgres.Config `mapstructure:"postgres"`
 	Jaeger          *tracing.Config  `mapstructure:"jaeger"`
-}
-
-type GRPC struct {
-	Port        string `mapstructure:"port"`
-	Development bool   `mapstructure:"development"`
-}
-
-type KafkaTopics struct {
-	ProductCreated kafkaClient.TopicConfig `mapstructure:"productCreated"`
-	ProductUpdated kafkaClient.TopicConfig `mapstructure:"productUpdated"`
-	ProductDeleted kafkaClient.TopicConfig `mapstructure:"productDeleted"`
-}
-
-type ServiceSettings struct {
-	RedisProductPrefixKey string `mapstructure:"redisProductPrefixKey"`
+	JWT             jwt.Config       `mapstructure:"jwt"`
 }
 
 func InitConfig() (*Config, error) {
@@ -58,7 +38,7 @@ func InitConfig() (*Config, error) {
 		} else {
 			getwd, err := os.Getwd()
 			if err != nil {
-				return nil, errors.Wrap(err, "os.Getwd")
+				return nil, fmt.Errorf("os.Getwd: %w", err)
 			}
 			configPath = fmt.Sprintf("%s/server_service/config/config.yaml", getwd)
 		}
@@ -70,44 +50,11 @@ func InitConfig() (*Config, error) {
 	viper.SetConfigFile(configPath)
 
 	if err := viper.ReadInConfig(); err != nil {
-		return nil, errors.Wrap(err, "viper.ReadInConfig")
+		return nil, fmt.Errorf("viper.ReadInConfig: %w", err)
 	}
 
 	if err := viper.Unmarshal(cfg); err != nil {
-		return nil, errors.Wrap(err, "viper.Unmarshal")
-	}
-
-	grpcPort := os.Getenv(constants.GrpcPort)
-	if grpcPort != "" {
-		cfg.GRPC.Port = grpcPort
-	}
-	postgresHost := os.Getenv(constants.PostgresqlHost)
-	if postgresHost != "" {
-		cfg.Postgresql.Host = postgresHost
-	}
-	postgresPort := os.Getenv(constants.PostgresqlPort)
-	if postgresPort != "" {
-		cfg.Postgresql.Port = postgresPort
-	}
-	redisAddr := os.Getenv(constants.RedisAddr)
-	if redisAddr != "" {
-		cfg.Redis.Addr = redisAddr
-	}
-	//jaegerAddr := os.Getenv("JAEGER_HOST")
-	//if jaegerAddr != "" {
-	//	cfg.Jaeger.HostPort = jaegerAddr
-	//}
-	//kafkaBrokers := os.Getenv("KAFKA_BROKERS")
-	//if kafkaBrokers != "" {
-	//	cfg.Kafka.Brokers = []string{"host.docker.internal:9092"}
-	//}
-	kafkaBrokers := os.Getenv(constants.KafkaBrokers)
-	if kafkaBrokers != "" {
-		cfg.Kafka.Brokers = []string{kafkaBrokers}
-	}
-	jaegerAddr := os.Getenv(constants.JaegerHostPort)
-	if jaegerAddr != "" {
-		cfg.Jaeger.HostPort = jaegerAddr
+		return nil, fmt.Errorf("viper.Unmarshal: %w", err)
 	}
 
 	return cfg, nil

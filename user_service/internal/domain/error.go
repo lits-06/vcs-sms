@@ -7,4 +7,5 @@ var (
 	ErrUserNotFound    = errors.New("user not found")
 	ErrInvalidPassword = errors.New("invalid password")
 	ErrInvalidScope    = errors.New("invalid scope")
+	ErrNoValidScopesFound = errors.New("no valid scopes found")
 )

@@ -25,7 +25,7 @@ func (r *userRepository) CreateUser(ctx context.Context, user *domain.User) (*do
 	defer span.Finish()
 
 	if err := r.db.WithContext(ctx).Create(user).Error; err != nil {
-		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to create user: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Create: %w", err))
 	}
 
 	return user, nil
@@ -40,7 +40,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*dom
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get user by email: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Preload.Where.First: %w", err))
 	}
 
 	return &user, nil
@@ -55,7 +55,7 @@ func (r *userRepository) GetUserByID(ctx context.Context, id string) (*domain.Us
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, tracing.TraceWithErr(span, fmt.Errorf("failed to get user by ID: %w", err))
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Preload.Where.First: %w", err))
 	}
 
 	return &user, nil
@@ -67,15 +67,15 @@ func (r *userRepository) AddUserScopes(ctx context.Context, userID string, scope
 
 	var user domain.User
 	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to find user: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Where.First: %w", err))
 	}
 
 	var sc []domain.Scope
 	if err := r.db.WithContext(ctx).Where("name IN ?", scopes).Find(&sc).Error; err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to find scopes: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Where.Find: %w", err))
 	}
 	if len(sc) == 0 {
-		return tracing.TraceWithErr(span, fmt.Errorf("no valid scopes found"))
+		return tracing.TraceWithErr(span, domain.ErrNoValidScopesFound)
 	}
 
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -84,7 +84,7 @@ func (r *userRepository) AddUserScopes(ctx context.Context, userID string, scope
 		}
 		return nil
 	}); err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to add scopes to user: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Transaction: %w", err))
 	}
 
 	return nil
@@ -96,15 +96,15 @@ func (r *userRepository) RemoveUserScopes(ctx context.Context, userID string, sc
 
 	var user domain.User
 	if err := r.db.WithContext(ctx).Where("id = ?", userID).First(&user).Error; err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to find user: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Where.First: %w", err))
 	}
 
 	var sc []domain.Scope
 	if err := r.db.WithContext(ctx).Where("name IN ?", scopes).Find(&sc).Error; err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to find scopes: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Where.Find: %w", err))
 	}
 	if len(sc) == 0 {
-		return tracing.TraceWithErr(span, fmt.Errorf("no valid scopes found"))
+		return tracing.TraceWithErr(span, domain.ErrNoValidScopesFound)
 	}
 
 	if err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -113,7 +113,7 @@ func (r *userRepository) RemoveUserScopes(ctx context.Context, userID string, sc
 		}
 		return nil
 	}); err != nil {
-		return tracing.TraceWithErr(span, fmt.Errorf("failed to remove scopes from user: %w", err))
+		return tracing.TraceWithErr(span, fmt.Errorf("db.WithContext.Transaction: %w", err))
 	}
 
 	return nil

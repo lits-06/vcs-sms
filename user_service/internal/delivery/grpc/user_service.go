@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
@@ -11,6 +12,7 @@ import (
 )
 
 type userService struct {
+	userpb.UnimplementedUserServiceServer
 	log    logger.Logger
 	userUC domain.UseCase
 }
@@ -28,8 +30,8 @@ func (s *userService) GetUserByEmail(ctx context.Context, req *userpb.GetUserByE
 
 	user, err := s.userUC.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		s.log.Errorf("userUC.GetUserByEmail: %v", err)
-		return nil, tracing.TraceWithErr(span, err)
+		s.log.Error("userUC.GetUserByEmail: %v", err)
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("userUC.GetUserByEmail: %w", err))
 	}
 
 	return &userpb.GetUserByEmailResponse{
