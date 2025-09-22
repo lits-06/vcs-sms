@@ -1,14 +1,205 @@
+version: '3.9'
+
 services:
+  # Reverse Proxy
   traefik:
-    image: traefik:v2.10
+    image: traefik:v3.5.2
     container_name: sms_traefik
     command:
       - "--api.dashboard=true"
-      # - "--api.insecure=true"
+      - "--api.insecure=true"
       - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
     ports:
       - "80:80"
-      - "8080:8080"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - sms-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+
+  # Infrastructure Services
+  postgres:
+    image: postgres:16.10-alpine
+    container_name: sms_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sms_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sms-network
+
+  redis:
+    image: redis:8-alpine
+    container_name: sms_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sms-network
+
+  kafka:
+    image: bitnami/kafka:sha256-f45d5b813412e1ef7ce67b467309a84e4c6dc03d7626a0b6da867db9b69bd107
+    container_name: sms_kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_KRAFT_MODE: true
+      KAFKA_ENABLE_KRAFT: yes
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    volumes:
+      - kafka_data:/bitnami/kafka
+    networks:
+      - sms-network
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.1.4
+    container_name: sms_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - sms-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.73.0
+    container_name: sms_jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+    networks:
+      - sms-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jaeger.rule=Host(`jaeger.localhost`)"
+      - "traefik.http.routers.jaeger.entrypoints=web"
+      - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+
+  # Application Services
+  user_service:
+    build:
+      context: .
+      dockerfile: ./user_service/Dockerfile
+    container_name: sms_user_service
+    depends_on:
+      - postgres
+      - jaeger
+    ports:
+      - "50001:50001"  # gRPC port
+    volumes:
+      - ./user_service/config/config.yaml:/app/config/config.yaml
+    networks:
+      - sms-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.user-api.rule=Host(`user.localhost`) && PathPrefix(`/api/users`)"
+      - "traefik.http.routers.user-api.entrypoints=web"
+      - "traefik.http.services.user-api.loadbalancer.server.port=8001"
+
+  auth_service:
+    build:
+      context: .
+      dockerfile: ./auth_service/Dockerfile
+    container_name: sms_auth_service
+    depends_on:
+      - redis
+      - jaeger
+    volumes:
+      - ./auth_service/config/config.yaml:/app/config/config.yaml
+    networks:
+      - sms-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth-api.rule=Host(`auth.localhost`) && PathPrefix(`/api/auth`)"
+      - "traefik.http.routers.auth-api.entrypoints=web"
+      - "traefik.http.services.auth-api.loadbalancer.server.port=8003"
+
+  server_service:
+    build:
+      context: .
+      dockerfile: ./server_service/Dockerfile
+    container_name: sms_server_service
+    depends_on:
+      - postgres
+      - kafka
+      - jaeger
+    volumes:
+      - ./server_service/config/config.yaml:/app/config/config.yaml
+    networks:
+      - sms-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.server-api.rule=Host(`server.localhost`) && PathPrefix(`/api/servers`)"
+      - "traefik.http.routers.server-api.entrypoints=web"
+      - "traefik.http.services.server-api.loadbalancer.server.port=8000"
+
+  report_service:
+    build:
+      context: .
+      dockerfile: ./report_service/Dockerfile
+    container_name: sms_report_service
+    depends_on:
+      - elasticsearch
+      - jaeger
+    volumes:
+      - ./report_service/config/config.yaml:/app/config/config.yaml
+    networks:
+      - sms-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.report-api.rule=Host(`report.localhost`) && PathPrefix(`/api/reports`)"
+      - "traefik.http.routers.report-api.entrypoints=web"
+      - "traefik.http.services.report-api.loadbalancer.server.port=8002"
+
+  healthcheck_service:
+    build:
+      context: .
+      dockerfile: ./healthcheck_service/Dockerfile
+    container_name: sms_healthcheck_service
+    depends_on:
+      - elasticsearch
+      - redis
+      - kafka
+      - jaeger
+    volumes:
+      - ./healthcheck_service/config/config.yaml:/app/config/config.yaml
+    networks:
+      - sms-network
+    # No Traefik labels as this is a background service
+
+networks:
+  sms-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
+    driver: local
