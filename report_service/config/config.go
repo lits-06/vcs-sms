@@ -21,14 +21,14 @@ func init() {
 }
 
 type Config struct {
-	ServiceName  string              `mapstructure:"serviceName"`
-	Port             string              `mapstructure:"port"`
-	Duration         time.Duration       `mapstructure:"duration"`
-	Logger           *logger.Config      `mapstructure:"logger"`
-	Elasticsearch	Elasticsearch       `mapstructure:"elasticsearch"`
-	Jaeger           *tracing.Config     `mapstructure:"jaeger"`
-	Smtp			Smtp `mapstructure:"smtp"`
-	JWT             *jwt.Config      `mapstructure:"jwt"`
+	ServiceName   string          `mapstructure:"serviceName"`
+	Port          string          `mapstructure:"port"`
+	Duration      time.Duration   `mapstructure:"duration"`
+	Logger        *logger.Config  `mapstructure:"logger"`
+	Elasticsearch Elasticsearch   `mapstructure:"elasticsearch"`
+	Jaeger        *tracing.Config `mapstructure:"jaeger"`
+	Smtp          Smtp            `mapstructure:"smtp"`
+	JWT           *jwt.Config     `mapstructure:"jwt"`
 }
 
 type Elasticsearch struct {
@@ -38,12 +38,12 @@ type Elasticsearch struct {
 }
 
 type Smtp struct {
-	Host       string   `mapstructure:"host" validate:"required"`
-	Port       int      `mapstructure:"port" validate:"required,min=1,max=65535"`
-	Username   string   `mapstructure:"username" validate:"required"`
-	Password   string   `mapstructure:"password" validate:"required"`
-	From       string   `mapstructure:"from" validate:"required,email"`
-	To         []string `mapstructure:"to" validate:"required,dive,email"`
+	Host     string   `mapstructure:"host" validate:"required"`
+	Port     int      `mapstructure:"port" validate:"required,min=1,max=65535"`
+	Username string   `mapstructure:"username" validate:"required"`
+	Password string   `mapstructure:"password" validate:"required"`
+	From     string   `mapstructure:"from" validate:"required,email"`
+	To       []string `mapstructure:"to" validate:"required,dive,email"`
 }
 
 func InitConfig() (*Config, error) {

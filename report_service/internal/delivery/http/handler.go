@@ -20,7 +20,6 @@ import (
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/report_service/internal/domain"
 	"github.com/lits-06/vcs-sms/report_service/internal/dto"
-	"github.com/opentracing/opentracing-go"
 )
 
 type reportHandler struct {
@@ -52,7 +51,7 @@ func NewReportHandler(log logger.Logger, reportUsecase domain.UseCase, middlewar
 // @Security BearerAuth
 // @Router /reports [post]
 func (h *reportHandler) CreateReport(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "reportHandler.CreateReport")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "reportHandler.CreateReport")
 	defer span.Finish()
 
 	var req dto.UptimeRequest

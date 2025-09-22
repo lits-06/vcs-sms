@@ -8,10 +8,16 @@ import (
 )
 
 func (h *reportHandler) RegisterRoutes(r *gin.Engine) {
-	// Swagger documentation routes
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	
+	report := r.Group("/api/reports")
+	report.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	report.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status":  "ok",
+			"message": "Report Service is running",
+		})
+	})
+
 	// API routes with authentication
-	r.Use(h.middleware.RequireAuth())
-	r.POST("/reports", h.middleware.RequireScopes(constants.ServerScopeReport), h.CreateReport)
+	report.Use(h.middleware.RequireAuth())
+	report.POST("/", h.middleware.RequireScopes(constants.ServerScopeReport), h.CreateReport)
 }
