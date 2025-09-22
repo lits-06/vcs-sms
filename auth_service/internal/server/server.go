@@ -39,6 +39,7 @@ func (s *server) Run() error {
 
 	tracer, closer, err := tracing.NewJaegerTracer(s.cfg.Jaeger)
 	if err != nil {
+		s.log.Error("Failed to create Jaeger tracer", "error", err)
 		return err
 	}
 	defer closer.Close()

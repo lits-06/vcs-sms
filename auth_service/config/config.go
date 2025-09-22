@@ -57,7 +57,7 @@ func InitConfig() (*Config, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, "os.Getwd")
 			}
-			configPath = fmt.Sprintf("%s/api_gateway_service/config/config.yaml", getwd)
+			configPath = fmt.Sprintf("%s/auth_service/config/config.yaml", getwd)
 		}
 	}
 
@@ -72,16 +72,6 @@ func InitConfig() (*Config, error) {
 
 	if err := viper.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("viper.Unmarshal: %w", err)
-	}
-
-	port := os.Getenv(constants.HttpPort)
-	if port != "" {
-		cfg.Port = port
-	}
-
-	jaegerAddr := os.Getenv(constants.JaegerHostPort)
-	if jaegerAddr != "" {
-		cfg.Jaeger.HostPort = jaegerAddr
 	}
 
 	return cfg, nil

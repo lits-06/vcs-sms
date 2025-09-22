@@ -1,3 +1,15 @@
+// @title Auth Service API
+// @version 1.0
+// @description This is the Auth Service API for VCS-SMS system
+
+// @host localhost:8003
+// @BasePath /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
 package http
 
 import (
@@ -26,6 +38,17 @@ func NewAuthHandler(log logger.Logger, authUsecase domain.UseCase, middleware *m
 	}
 }
 
+// Login godoc
+// @Summary Login user
+// @Description Login user with email and password
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body dto.LoginRequest true "Login request"
+// @Success 200 {object} map[string]string "User logged in successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 500 {object} map[string]string "Failed to login"
+// @Router /api/auth/login [post]
 func (h *authHandler) Login(c *gin.Context) {
 	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "authHandler.Login")
 	defer span.Finish()
@@ -47,6 +70,17 @@ func (h *authHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"access_token": accessToken, "refresh_token": refreshToken})
 }
 
+// RefreshAccessToken godoc
+// @Summary Refresh access token
+// @Description Refresh access token using refresh token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body dto.RefreshTokenRequest true "Refresh token request"
+// @Success 200 {object} map[string]string "Access token refreshed successfully"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 500 {object} map[string]string "Failed to refresh access token"
+// @Router /api/auth/refresh [post]
 func (h *authHandler) RefreshAccessToken(c *gin.Context) {
 	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "authHandler.RefreshAccessToken")
 	defer span.Finish()
