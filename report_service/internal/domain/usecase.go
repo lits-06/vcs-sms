@@ -1,7 +1,10 @@
 package domain
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type UseCase interface {
-	ReportStats(ctx context.Context, req *UptimeRequest) error
+	ReportStats(ctx context.Context, email string, startDate, endDate time.Time) error
 }

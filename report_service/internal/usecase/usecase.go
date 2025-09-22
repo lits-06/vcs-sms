@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"io"
 	"path/filepath"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/lits-06/vcs-sms/report_service/config"
 	"github.com/lits-06/vcs-sms/report_service/internal/domain"
 	"github.com/opentracing/opentracing-go"
+	"github.com/xuri/excelize/v2"
 	"gopkg.in/gomail.v2"
 )
 
@@ -25,16 +27,16 @@ func NewReportUseCase(repo domain.Repository, cfg *config.Config) domain.UseCase
 	return &reportUseCase{repo: repo, cfg: cfg}
 }
 
-func (uc *reportUseCase) ReportStats(ctx context.Context, req *domain.UptimeRequest) error {
+func (uc *reportUseCase) ReportStats(ctx context.Context, email string, startDate, endDate time.Time) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "reportUseCase.ReportStats")
 	defer span.Finish()
 
-	stats, err := uc.repo.GetUptimeStats(ctx, req)
+	stats, err := uc.repo.GetUptimeStats(ctx, startDate, endDate)
 	if err != nil {
 		return tracing.TraceWithErr(span, fmt.Errorf("failed to get uptime stats: %w", err))
 	}
 
-	return uc.sendUptimeReport(ctx, req.Email, stats)
+	return uc.sendUptimeReport(ctx, email, stats)
 }
 
 func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, stats *domain.UptimeStats) error {
@@ -47,7 +49,11 @@ func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, sta
 		return tracing.TraceWithErr(span, err)
 	}
 
-	emails := append([]string{email}, uc.cfg.Smtp.To...)
+	emails := []string{}
+	if email != "" {
+		emails = append(emails, email)
+	}
+	emails = append(emails, uc.cfg.Smtp.To...)
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", uc.cfg.Smtp.From)
@@ -56,6 +62,18 @@ func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, sta
 		stats.StartDate.Format(time.DateTime),
 		stats.EndDate.Format(time.DateTime)))
 	m.SetBody("text/html", htmlBody)
+
+	if stats.TotalServers > 0 {
+		excelBytes, err := uc.generateUptimeExcel(stats.ServerDetails)
+		if err != nil {
+			return tracing.TraceWithErr(span, fmt.Errorf("failed to generate excel report: %w", err))
+		}
+
+		m.Attach("uptime_report.xlsx", gomail.SetCopyFunc(func(w io.Writer) error {
+			_, err := w.Write(excelBytes)
+			return err
+		}))
+	}
 
 	d := gomail.NewDialer(uc.cfg.Smtp.Host, uc.cfg.Smtp.Port, uc.cfg.Smtp.Username, uc.cfg.Smtp.Password)
 	if err := d.DialAndSend(m); err != nil {
@@ -87,4 +105,31 @@ func (uc *reportUseCase) generateUptimeReportHTML(ctx context.Context, stats *do
 	}
 
 	return buf.String(), nil
+}
+
+func (uc *reportUseCase) generateUptimeExcel(details []domain.ServerUptimeDetail) ([]byte, error) {
+	f := excelize.NewFile()
+	sheet := "UptimeReport"
+	index, _ := f.NewSheet(sheet)
+
+	// Header
+	headers := []string{"Server ID", "Uptime Percentage"}
+	for i, h := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		f.SetCellValue(sheet, cell, h)
+	}
+
+	// Data
+	for r, d := range details {
+		f.SetCellValue(sheet, fmt.Sprintf("A%d", r+2), d.ServerID)
+		f.SetCellValue(sheet, fmt.Sprintf("B%d", r+2), d.UptimePercentage)
+	}
+
+	f.SetActiveSheet(index)
+
+	var buf bytes.Buffer
+	if err := f.Write(&buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

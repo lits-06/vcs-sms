@@ -1,8 +1,17 @@
 package config
 
 import (
+	"flag"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/lits-06/vcs-sms/pkg/constants"
+	"github.com/lits-06/vcs-sms/pkg/jwt"
 	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 )
 
 var configPath string
@@ -12,18 +21,20 @@ func init() {
 }
 
 type Config struct {
-	ServiceName      string              `mapstructure:"serviceName"`
+	ServiceName  string              `mapstructure:"serviceName"`
+	Port             string              `mapstructure:"port"`
+	Duration         time.Duration       `mapstructure:"duration"`
 	Logger           *logger.Config      `mapstructure:"logger"`
-	KafkaTopics      KafkaTopics         `mapstructure:"kafkaTopics"`
-	GRPC             GRPC                `mapstructure:"grpc"`
-	Postgresql       *postgres.Config    `mapstructure:"postgres"`
-	Kafka            *kafka.Config `mapstructure:"kafka"`
-	Redis            *redis.Config       `mapstructure:"redis"`
-	Probes           probes.Config       `mapstructure:"probes"`
-	ServiceSettings  ServiceSettings     `mapstructure:"serviceSettings"`
+	Elasticsearch	Elasticsearch       `mapstructure:"elasticsearch"`
 	Jaeger           *tracing.Config     `mapstructure:"jaeger"`
-
 	Smtp			Smtp `mapstructure:"smtp"`
+	JWT             *jwt.Config      `mapstructure:"jwt"`
+}
+
+type Elasticsearch struct {
+	Address       string `mapstructure:"address"`
+	SnapshotIndex string `mapstructure:"snapshotIndex"`
+	RecordIndex   string `mapstructure:"recordIndex"`
 }
 
 type Smtp struct {
@@ -45,7 +56,7 @@ func InitConfig() (*Config, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, "os.Getwd")
 			}
-			configPath = fmt.Sprintf("%s/server_service/config/config.yaml", getwd)
+			configPath = fmt.Sprintf("%s/report_service/config/config.yaml", getwd)
 		}
 	}
 
@@ -61,39 +72,5 @@ func InitConfig() (*Config, error) {
 	if err := viper.Unmarshal(cfg); err != nil {
 		return nil, errors.Wrap(err, "viper.Unmarshal")
 	}
-
-	grpcPort := os.Getenv(constants.GrpcPort)
-	if grpcPort != "" {
-		cfg.GRPC.Port = grpcPort
-	}
-	postgresHost := os.Getenv(constants.PostgresqlHost)
-	if postgresHost != "" {
-		cfg.Postgresql.Host = postgresHost
-	}
-	postgresPort := os.Getenv(constants.PostgresqlPort)
-	if postgresPort != "" {
-		cfg.Postgresql.Port = postgresPort
-	}
-	redisAddr := os.Getenv(constants.RedisAddr)
-	if redisAddr != "" {
-		cfg.Redis.Addr = redisAddr
-	}
-	//jaegerAddr := os.Getenv("JAEGER_HOST")
-	//if jaegerAddr != "" {
-	//	cfg.Jaeger.HostPort = jaegerAddr
-	//}
-	//kafkaBrokers := os.Getenv("KAFKA_BROKERS")
-	//if kafkaBrokers != "" {
-	//	cfg.Kafka.Brokers = []string{"host.docker.internal:9092"}
-	//}
-	kafkaBrokers := os.Getenv(constants.KafkaBrokers)
-	if kafkaBrokers != "" {
-		cfg.Kafka.Brokers = []string{kafkaBrokers}
-	}
-	jaegerAddr := os.Getenv(constants.JaegerHostPort)
-	if jaegerAddr != "" {
-		cfg.Jaeger.HostPort = jaegerAddr
-	}
-
 	return cfg, nil
 }

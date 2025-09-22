@@ -5,25 +5,33 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v9"
+	"github.com/lits-06/vcs-sms/report_service/config"
 	"github.com/lits-06/vcs-sms/report_service/internal/domain"
 )
 
 type recordRepository struct {
 	esClient *elasticsearch.Client
+	snapshotIdx string
+	recordIdx   string
 }
 
-func NewRecordRepository(esClient *elasticsearch.Client) domain.Repository {
-	return &recordRepository{esClient: esClient}
+func NewRecordRepository(esClient *elasticsearch.Client, cfg *config.Config) domain.Repository {
+	return &recordRepository{
+		esClient: esClient,
+		snapshotIdx: cfg.Elasticsearch.SnapshotIndex,
+		recordIdx:   cfg.Elasticsearch.RecordIndex,
+	}
 }
 
 // GetUptimeStats calculates comprehensive uptime statistics for all servers
-func (r *recordRepository) GetUptimeStats(ctx context.Context, req *domain.UptimeRequest) (*domain.UptimeStats, error) {
+func (r *recordRepository) GetUptimeStats(ctx context.Context, startDate, endDate time.Time) (*domain.UptimeStats, error) {
 	// Calculate total time period in hours
-	totalHours := req.EndDate.Sub(req.StartDate).Hours()
-	
+	TotalSeconds := endDate.Sub(startDate).Seconds()
+
 	// Get all server snapshots to know total servers
 	serverSnapshots, err := r.getAllServerSnapshots(ctx)
 	if err != nil {
@@ -33,243 +41,72 @@ func (r *recordRepository) GetUptimeStats(ctx context.Context, req *domain.Uptim
 	totalServers := len(serverSnapshots)
 	if totalServers == 0 {
 		return &domain.UptimeStats{
-			StartDate:          req.StartDate,
-			EndDate:            req.EndDate,
+			StartDate:          startDate,
+			EndDate:            endDate,
 			TotalServers:       0,
 			OnlineServers:      0,
 			OfflineServers:     0,
 			UptimePercentage:   0,
-			TotalUptimeHours:   0,
-			TotalPossibleHours: 0,
 		}, nil
 	}
-	
-	// Get uptime statistics for all servers
-	serverIDs := make([]string, 0, totalServers)
-	for serverID := range serverSnapshots {
-		serverIDs = append(serverIDs, serverID)
+
+	uptimeDetail := make([]domain.ServerUptimeDetail, 0, totalServers)
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for _, server := range serverSnapshots {
+		wg.Add(1)
+		go func(s domain.Server) {
+			defer wg.Done()
+			event, err := r.getServerEvents(ctx, s.ServerID, startDate, endDate)
+			if err != nil {
+				// Log error and continue
+				fmt.Printf("Error fetching events for server %s: %v\n", s.ServerID, err)
+				return
+			}
+
+			previousStatus, err := r.lastStatusBeforeDate(ctx, s.ServerID, startDate)
+			if err != nil {
+				// Log error and continue
+				fmt.Printf("Error fetching last status for server %s: %v\n", s.ServerID, err)
+				return
+			}
+
+			uptimeSeconds := r.calculateUptimeSeconds(event, startDate, endDate, previousStatus)
+			detail := domain.ServerUptimeDetail{
+				ServerID:         s.ServerID,
+				UptimePercentage: float64(uptimeSeconds) / TotalSeconds * 100,
+			}
+
+			mu.Lock()
+			uptimeDetail = append(uptimeDetail, detail)
+			mu.Unlock()
+		}(server)
 	}
+	wg.Wait()
 	
-	serverDetails, err := r.GetServerUptimeStats(ctx, serverIDs, req.StartDate, req.EndDate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get server uptime stats: %w", err)
-	}
-	
-	// Calculate aggregated statistics
-	var totalUptimeHours float64
 	var onlineServers int
-	totalPossibleHours := float64(totalServers) * totalHours
-	
-	for _, detail := range serverDetails {
-		totalUptimeHours += detail.UptimeHours
-		if detail.CurrentStatus == "online" {
+	var totalUptimePercentage float64
+	for _, detail := range uptimeDetail {
+		if serverSnapshots[detail.ServerID].Status == "ON" {
 			onlineServers++
 		}
-	}
-	
-	uptimePercentage := 0.0
-	if totalPossibleHours > 0 {
-		uptimePercentage = (totalUptimeHours / totalPossibleHours) * 100
+		totalUptimePercentage += detail.UptimePercentage
 	}
 	
 	return &domain.UptimeStats{
-		StartDate:          req.StartDate,
-		EndDate:            req.EndDate,
+		StartDate:          startDate,
+		EndDate:            endDate,
 		TotalServers:       totalServers,
 		OnlineServers:      onlineServers,
 		OfflineServers:     totalServers - onlineServers,
-		UptimePercentage:   uptimePercentage,
-		TotalUptimeHours:   totalUptimeHours,
-		TotalPossibleHours: totalPossibleHours,
-		ServerDetails:      serverDetails,
+		UptimePercentage:   totalUptimePercentage / float64(totalServers),
+		ServerDetails:      uptimeDetail,
 	}, nil
 }
 
-// GetServerUptimeStats calculates uptime for specific servers
-func (r *recordRepository) GetServerUptimeStats(ctx context.Context, serverIDs []string, startDate, endDate time.Time) ([]domain.ServerUptimeDetail, error) {
-	query := map[string]interface{}{
-		"size": 10000,
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"must": []map[string]interface{}{
-					{
-						"terms": map[string]interface{}{
-							"server_id": serverIDs,
-						},
-					},
-					{
-						"range": map[string]interface{}{
-							"timestamp": map[string]interface{}{
-								"gte": startDate.Format(time.RFC3339),
-								"lte": endDate.Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-		"sort": []map[string]interface{}{
-			{
-				"server_id": map[string]string{"order": "asc"},
-			},
-			{
-				"timestamp": map[string]string{"order": "asc"},
-			},
-		},
-	}
-	
-	queryBytes, err := json.Marshal(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal query: %w", err)
-	}
-	
-	// Search state events
-	res, err := r.esClient.Search(
-		r.esClient.Search.WithContext(ctx),
-		r.esClient.Search.WithIndex("server_state_events"),
-		r.esClient.Search.WithBody(bytes.NewReader(queryBytes)),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search events: %w", err)
-	}
-	defer res.Body.Close()
-	
-	var searchResponse struct {
-		Hits struct {
-			Hits []struct {
-				Source domain.ServerStateRecord `json:"_source"`
-			} `json:"hits"`
-		} `json:"hits"`
-	}
-	
-	if err := json.NewDecoder(res.Body).Decode(&searchResponse); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-	
-	// Get current server status
-	currentStatus, err := r.GetServerCurrentStatus(ctx, serverIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current status: %w", err)
-	}
-	
-	// Calculate uptime for each server
-	return r.calculateServerUptime(searchResponse.Hits.Hits, currentStatus, startDate, endDate), nil
-}
-
-// GetServerCurrentStatus gets current status of servers
-func (r *recordRepository) GetServerCurrentStatus(ctx context.Context, serverIDs []string) (map[string]domain.ServerSnapshot, error) {
-	query := map[string]interface{}{
-		"size": len(serverIDs),
-		"query": map[string]interface{}{
-			"terms": map[string]interface{}{
-				"server_id": serverIDs,
-			},
-		},
-	}
-	
-	queryBytes, err := json.Marshal(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal query: %w", err)
-	}
-	
-	res, err := r.esClient.Search(
-		r.esClient.Search.WithContext(ctx),
-		r.esClient.Search.WithIndex("server_snapshots"),
-		r.esClient.Search.WithBody(bytes.NewReader(queryBytes)),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search snapshots: %w", err)
-	}
-	defer res.Body.Close()
-	
-	var searchResponse struct {
-		Hits struct {
-			Hits []struct {
-				Source domain.ServerSnapshot `json:"_source"`
-			} `json:"hits"`
-		} `json:"hits"`
-	}
-	
-	if err := json.NewDecoder(res.Body).Decode(&searchResponse); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-	
-	result := make(map[string]domain.ServerSnapshot)
-	for _, hit := range searchResponse.Hits.Hits {
-		result[hit.Source.ServerID] = hit.Source
-	}
-	
-	return result, nil
-}
-
-// GetServerStateEvents gets state change events for servers
-func (r *recordRepository) GetServerStateEvents(ctx context.Context, serverIDs []string, startDate, endDate time.Time) ([]domain.ServerStateRecord, error) {
-	query := map[string]interface{}{
-		"size": 10000,
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"must": []map[string]interface{}{
-					{
-						"terms": map[string]interface{}{
-							"server_id": serverIDs,
-						},
-					},
-					{
-						"range": map[string]interface{}{
-							"timestamp": map[string]interface{}{
-								"gte": startDate.Format(time.RFC3339),
-								"lte": endDate.Format(time.RFC3339),
-							},
-						},
-					},
-				},
-			},
-		},
-		"sort": []map[string]interface{}{
-			{
-				"timestamp": map[string]string{"order": "asc"},
-			},
-		},
-	}
-	
-	queryBytes, err := json.Marshal(query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal query: %w", err)
-	}
-	
-	res, err := r.esClient.Search(
-		r.esClient.Search.WithContext(ctx),
-		r.esClient.Search.WithIndex("server_state_events"),
-		r.esClient.Search.WithBody(bytes.NewReader(queryBytes)),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search events: %w", err)
-	}
-	defer res.Body.Close()
-	
-	var searchResponse struct {
-		Hits struct {
-			Hits []struct {
-				Source domain.ServerStateRecord `json:"_source"`
-			} `json:"hits"`
-		} `json:"hits"`
-	}
-	
-	if err := json.NewDecoder(res.Body).Decode(&searchResponse); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-	
-	result := make([]domain.ServerStateRecord, 0, len(searchResponse.Hits.Hits))
-	for _, hit := range searchResponse.Hits.Hits {
-		result = append(result, hit.Source)
-	}
-	
-	return result, nil
-}
-
 // Helper functions
-
-func (r *recordRepository) getAllServerSnapshots(ctx context.Context) (map[string]domain.ServerSnapshot, error) {
+func (r *recordRepository) getAllServerSnapshots(ctx context.Context) (map[string]domain.Server, error) {
 	query := map[string]interface{}{
 		"size": 10000,
 		"query": map[string]interface{}{
@@ -284,7 +121,7 @@ func (r *recordRepository) getAllServerSnapshots(ctx context.Context) (map[strin
 	
 	res, err := r.esClient.Search(
 		r.esClient.Search.WithContext(ctx),
-		r.esClient.Search.WithIndex("server_snapshots"),
+		r.esClient.Search.WithIndex(r.snapshotIdx),
 		r.esClient.Search.WithBody(bytes.NewReader(queryBytes)),
 	)
 	if err != nil {
@@ -295,7 +132,7 @@ func (r *recordRepository) getAllServerSnapshots(ctx context.Context) (map[strin
 	var searchResponse struct {
 		Hits struct {
 			Hits []struct {
-				Source domain.ServerSnapshot `json:"_source"`
+				Source domain.Server `json:"_source"`
 			} `json:"hits"`
 		} `json:"hits"`
 	}
@@ -304,7 +141,7 @@ func (r *recordRepository) getAllServerSnapshots(ctx context.Context) (map[strin
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 	
-	result := make(map[string]domain.ServerSnapshot)
+	result := make(map[string]domain.Server)
 	for _, hit := range searchResponse.Hits.Hits {
 		result[hit.Source.ServerID] = hit.Source
 	}
@@ -312,93 +149,93 @@ func (r *recordRepository) getAllServerSnapshots(ctx context.Context) (map[strin
 	return result, nil
 }
 
-func (r *recordRepository) calculateServerUptime(events []struct {
-	Source domain.ServerStateRecord `json:"_source"`
-}, currentStatus map[string]domain.ServerSnapshot, startDate, endDate time.Time) []domain.ServerUptimeDetail {
-	
-	serverUptime := make(map[string]*domain.ServerUptimeDetail)
-	serverEvents := make(map[string][]domain.ServerStateRecord)
-	
-	// Group events by server
-	for _, event := range events {
-		serverID := event.Source.ServerID
-		if _, exists := serverEvents[serverID]; !exists {
-			serverEvents[serverID] = make([]domain.ServerStateRecord, 0)
-		}
-		serverEvents[serverID] = append(serverEvents[serverID], event.Source)
+func (r *recordRepository) getServerEvents(ctx context.Context, serverID string, startDate, endDate time.Time) ([]domain.Server, error) {
+	query := map[string]interface{}{
+		"size": 10000,
+		"query": map[string]interface{}{
+			"bool": map[string]interface{}{
+				"must": []map[string]interface{}{
+					{
+						"term": map[string]interface{}{
+							"server_id": serverID,
+						},
+					},
+					{
+						"range": map[string]interface{}{
+							"timestamp": map[string]interface{}{
+								"gte": startDate.Format(time.RFC3339),
+								"lte": endDate.Format(time.RFC3339),
+							},
+						},
+					},
+				},
+			},
+		},
+		"sort": []map[string]interface{}{
+			{
+				"timestamp": map[string]string{"order": "asc"},
+			},
+		},
 	}
 	
-	totalHours := endDate.Sub(startDate).Hours()
-	
-	// Calculate uptime for each server
-	for serverID, events := range serverEvents {
-		detail := &domain.ServerUptimeDetail{
-			ServerID:      serverID,
-			UptimeHours:   0,
-			DowntimeHours: 0,
-		}
-		
-		// Get current status
-		if snapshot, exists := currentStatus[serverID]; exists {
-			detail.CurrentStatus = snapshot.CurrentStatus
-			detail.LastSeen = snapshot.LastUpdated
-		}
-		
-		// Calculate uptime based on state transitions
-		uptimeSeconds := r.calculateUptimeSeconds(events, startDate, endDate, detail.CurrentStatus)
-		detail.UptimeHours = float64(uptimeSeconds) / 3600
-		detail.DowntimeHours = totalHours - detail.UptimeHours
-		
-		if totalHours > 0 {
-			detail.UptimePercentage = (detail.UptimeHours / totalHours) * 100
-		}
-		
-		serverUptime[serverID] = detail
+	queryBytes, err := json.Marshal(query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal query: %w", err)
 	}
 	
-	// Add servers that have no events in the time period
-	for serverID, snapshot := range currentStatus {
-		if _, exists := serverUptime[serverID]; !exists {
-			detail := &domain.ServerUptimeDetail{
-				ServerID:         serverID,
-				CurrentStatus:    snapshot.CurrentStatus,
-				LastSeen:         snapshot.LastUpdated,
-				UptimePercentage: 0,
-				UptimeHours:      0,
-				DowntimeHours:    totalHours,
-			}
-			
-			// If server was online before start date, assume it was online for the entire period
-			if snapshot.CurrentStatus == "online" && snapshot.LastOnline.Before(startDate) {
-				detail.UptimeHours = totalHours
-				detail.DowntimeHours = 0
-				detail.UptimePercentage = 100
-			}
-			
-			serverUptime[serverID] = detail
-		}
+	res, err := r.esClient.Search(
+		r.esClient.Search.WithContext(ctx),
+		r.esClient.Search.WithIndex(r.recordIdx),
+		r.esClient.Search.WithBody(bytes.NewReader(queryBytes)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search events: %w", err)
+	}
+	defer res.Body.Close()
+	
+	var searchResponse struct {
+		Hits struct {
+			Hits []struct {
+				Source domain.Server `json:"_source"`
+			} `json:"hits"`
+		} `json:"hits"`
 	}
 	
-	// Convert to slice
-	result := make([]domain.ServerUptimeDetail, 0, len(serverUptime))
-	for _, detail := range serverUptime {
-		result = append(result, *detail)
+	if err := json.NewDecoder(res.Body).Decode(&searchResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 	
-	return result
+	result := make([]domain.Server, 0, len(searchResponse.Hits.Hits))
+	for _, hit := range searchResponse.Hits.Hits {
+		result = append(result, hit.Source)
+	}
+	
+	return result, nil
 }
 
-func (r *recordRepository) calculateUptimeSeconds(events []domain.ServerStateRecord, startDate, endDate time.Time, currentStatus string) int64 {
+func (r *recordRepository) calculateUptimeSeconds(events []domain.Server, startDate, endDate time.Time, previousStatus string) int64 {
 	var uptimeSeconds int64
 	var lastOnlineTime *time.Time
 	
-	// Sort events by timestamp
-	// Events should already be sorted from ES query
+	if len(events) == 0 {
+		if previousStatus == "ON" {
+			return int64(endDate.Sub(startDate).Seconds())
+		}
+		return 0
+	}
+
+	if len(events) == 1 && events[0].Status == "OFF" {
+		if previousStatus == "ON" {
+			return int64(events[0].Timestamp.Sub(startDate).Seconds())
+		}
+
+		return 0
+	}	
 	
 	for _, event := range events {
-		if event.Status == "online" {
+		if event.Status == "ON" {
 			lastOnlineTime = &event.Timestamp
-		} else if event.Status == "offline" && lastOnlineTime != nil {
+		} else if event.Status == "OFF" && lastOnlineTime != nil {
 			// Calculate uptime for this online period
 			onlineStart := *lastOnlineTime
 			offlineTime := event.Timestamp
@@ -422,14 +259,75 @@ func (r *recordRepository) calculateUptimeSeconds(events []domain.ServerStateRec
 	// If server is still online at the end of the period
 	if lastOnlineTime != nil {
 		onlineStart := *lastOnlineTime
-		if onlineStart.Before(startDate) {
-			onlineStart = startDate
-		}
-		
 		if onlineStart.Before(endDate) {
 			uptimeSeconds += int64(endDate.Sub(onlineStart).Seconds())
 		}
 	}
 	
 	return uptimeSeconds
+}
+
+func (r *recordRepository) lastStatusBeforeDate(ctx context.Context, serverID string, startDate time.Time) (string, error) {
+    query := map[string]interface{}{
+        "size": 1,
+        "query": map[string]interface{}{
+            "bool": map[string]interface{}{
+                "must": []map[string]interface{}{
+                    {
+                        "term": map[string]interface{}{
+                            "server_id": serverID,
+                        },
+                    },
+                    {
+                        "range": map[string]interface{}{
+                            "timestamp": map[string]interface{}{
+                                "lt": startDate.Format(time.RFC3339),
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "sort": []map[string]interface{}{
+            {
+                "timestamp": map[string]string{"order": "desc"},
+            },
+        },
+    }
+    
+    queryBytes, err := json.Marshal(query)
+    if err != nil {
+        return "OFF", fmt.Errorf("failed to marshal query: %w", err)
+    }
+    
+    res, err := r.esClient.Search(
+        r.esClient.Search.WithContext(ctx),
+        r.esClient.Search.WithIndex(r.recordIdx),
+        r.esClient.Search.WithBody(bytes.NewReader(queryBytes)),
+    )
+    if err != nil {
+        return "OFF", fmt.Errorf("failed to search events: %w", err)
+    }
+    defer res.Body.Close()
+    
+    var searchResponse struct {
+        Hits struct {
+            Total struct {
+                Value int64 `json:"value"`
+            } `json:"total"`
+            Hits []struct {
+                Source domain.Server `json:"_source"`
+            } `json:"hits"`
+        } `json:"hits"`
+    }
+    
+    if err := json.NewDecoder(res.Body).Decode(&searchResponse); err != nil {
+        return "OFF", fmt.Errorf("failed to decode response: %w", err)
+    }
+    
+    if searchResponse.Hits.Total.Value == 0 {
+        return "OFF", nil
+    }
+
+    return searchResponse.Hits.Hits[0].Source.Status, nil
 }
