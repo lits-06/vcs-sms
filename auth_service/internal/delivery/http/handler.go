@@ -21,7 +21,6 @@ import (
 	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/pkg/middleware"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
-	"github.com/opentracing/opentracing-go"
 )
 
 type authHandler struct {
@@ -50,7 +49,7 @@ func NewAuthHandler(log logger.Logger, authUsecase domain.UseCase, middleware *m
 // @Failure 500 {object} map[string]string "Failed to login"
 // @Router /api/auth/login [post]
 func (h *authHandler) Login(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "authHandler.Login")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "authHandler.Login")
 	defer span.Finish()
 
 	var req dto.LoginRequest
@@ -82,7 +81,7 @@ func (h *authHandler) Login(c *gin.Context) {
 // @Failure 500 {object} map[string]string "Failed to refresh access token"
 // @Router /api/auth/refresh [post]
 func (h *authHandler) RefreshAccessToken(c *gin.Context) {
-	span, ctx := opentracing.StartSpanFromContext(c.Request.Context(), "authHandler.RefreshAccessToken")
+	ctx, span := tracing.StartHttpServerTracerSpan(c, "authHandler.RefreshAccessToken")
 	defer span.Finish()
 
 	var req dto.RefreshTokenRequest

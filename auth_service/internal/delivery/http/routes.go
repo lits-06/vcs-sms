@@ -7,10 +7,8 @@ import (
 )
 
 func (h *authHandler) RegisterRoutes(r *gin.Engine) {
-	// Swagger endpoint
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	
 	auth := r.Group("/api/auth")
+	auth.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	auth.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"status":  "ok",
