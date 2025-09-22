@@ -9,4 +9,5 @@ type UseCase interface {
 	StopHealthCheckScheduler(ctx context.Context)
 	CheckServersHealth(ctx context.Context, servers *[]Server)
 	IndexServerState(ctx context.Context, server *Server) error
+	DeleteServerSnapshot(ctx context.Context, serverID string) error
 }

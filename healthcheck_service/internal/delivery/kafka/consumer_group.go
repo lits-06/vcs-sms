@@ -66,7 +66,39 @@ func (cg *ConsumerGroup) getNewKafkaWriter(topic string) *kafka.Writer {
 	return w
 }
 
-func (cg *ConsumerGroup) consumeIndexServerState(
+// func (cg *ConsumerGroup) consumeIndexServerState(
+// 	ctx context.Context,
+// 	cancel context.CancelFunc,
+// 	groupID string,
+// 	topic string,
+// 	workerNum int,
+// ) {
+// 	r := cg.getNewKafkaReader(cg.Brokers, topic, groupID)
+// 	defer cancel()
+// 	defer func() {
+// 		if err := r.Close(); err != nil {
+// 			cg.log.Error("r.Close: %v", err)
+// 		}
+// 	}()
+
+// 	w := cg.getNewKafkaWriter(deadLetterQueueTopic)
+// 	defer func() {
+// 		if err := w.Close(); err != nil {
+// 			cg.log.Error("w.Close: %v", err)
+// 			cancel()
+// 		}
+// 	}()
+
+// 	cg.log.Info("Starting consumer group: %v", r.Config().GroupID)
+// 	wg := &sync.WaitGroup{}
+// 	for i := 0; i < workerNum; i++ {
+// 		wg.Add(1)
+// 		go cg.indexWorker(ctx, cancel, wg, r, w, i)
+// 	}
+// 	wg.Wait()
+// }
+
+func (cg *ConsumerGroup) consumerCreateServer(
 	ctx context.Context,
 	cancel context.CancelFunc,
 	groupID string,
@@ -93,7 +125,39 @@ func (cg *ConsumerGroup) consumeIndexServerState(
 	wg := &sync.WaitGroup{}
 	for i := 0; i < workerNum; i++ {
 		wg.Add(1)
-		go cg.indexWorker(ctx, cancel, wg, r, w, i)
+		go cg.createWorker(ctx, cancel, wg, r, w, i)
+	}
+	wg.Wait()
+}
+
+func (cg *ConsumerGroup) consumeDeleteServer(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	groupID string,
+	topic string,
+	workerNum int,
+) {
+	r := cg.getNewKafkaReader(cg.Brokers, topic, groupID)
+	defer cancel()
+	defer func() {
+		if err := r.Close(); err != nil {
+			cg.log.Error("r.Close: %v", err)
+		}
+	}()
+
+	w := cg.getNewKafkaWriter(deadLetterQueueTopic)
+	defer func() {
+		if err := w.Close(); err != nil {
+			cg.log.Error("w.Close: %v", err)
+			cancel()
+		}
+	}()
+
+	cg.log.Info("Starting consumer group: %v", r.Config().GroupID)
+	wg := &sync.WaitGroup{}
+	for i := 0; i < workerNum; i++ {
+		wg.Add(1)
+		go cg.deleteWorker(ctx, cancel, wg, r, w, i)
 	}
 	wg.Wait()
 }
@@ -118,5 +182,7 @@ func (cg *ConsumerGroup) publishErrorMessage(ctx context.Context, w *kafka.Write
 }
 
 func (cg *ConsumerGroup) RunConsumers(ctx context.Context, cancel context.CancelFunc) {
-	go cg.consumeIndexServerState(ctx, cancel, stateGroupID, stateTopic, stateWorkerCount)
+	// go cg.consumeIndexServerState(ctx, cancel, stateGroupID, stateTopic, stateWorkerCount)
+	go cg.consumerCreateServer(ctx, cancel, createGroupID, createTopic, createWorkerCount)
+	go cg.consumeDeleteServer(ctx, cancel, deleteGroupID, deleteTopic, deleteWorkerCount)
 }

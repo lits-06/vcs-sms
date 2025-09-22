@@ -152,3 +152,32 @@ func (r *esRepository) IndexServerState(ctx context.Context, server *domain.Serv
 
 	return nil
 }
+
+func (r *esRepository) DeleteServerSnapshot(ctx context.Context, serverID string) error {
+	res, err := r.client.Delete(
+		r.snapshotIdx,
+		serverID,
+		r.client.Delete.WithContext(ctx),
+		r.client.Delete.WithRefresh("true"),
+	)
+
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return fmt.Errorf("res.IsError.Decode: %s", err)
+		} else {
+			return fmt.Errorf("res.IsError [%s] %s: %s",
+				res.Status(),
+				e["error"].(map[string]interface{})["type"],
+				e["error"].(map[string]interface{})["reason"],
+			)
+		}
+	}
+
+	return nil
+}

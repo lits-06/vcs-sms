@@ -8,6 +8,7 @@ type Repository interface {
 	SaveServerSnapshot(ctx context.Context, server *Server) error
 	IndexServerState(ctx context.Context, server *Server) error
 	GetAllServersSnapshot(ctx context.Context) (*[]Server, error)
+	DeleteServerSnapshot(ctx context.Context, serverID string) error
 }
 
 type CacheRepository interface {
@@ -15,4 +16,5 @@ type CacheRepository interface {
 	SaveServerSnapshot(ctx context.Context, server *Server) error
 	GetAllServersSnapshot(ctx context.Context) (*[]Server, error)
 	SetAllServersSnapshot(ctx context.Context, servers *[]Server) error
+	DeleteServerSnapshot(ctx context.Context, serverID string) error
 }

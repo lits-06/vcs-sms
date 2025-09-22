@@ -66,14 +66,14 @@ func (r *redisRepository) SetAllServersSnapshot(ctx context.Context, servers *[]
 		if err != nil {
 			return err
 		}
-		pipe.Set(ctx, r.snapshotKey+server.ServerID, sbytes, 0)
+		pipe.Set(ctx, r.snapshotKey+":"+server.ServerID, sbytes, 0)
 	}
 	_, err := pipe.Exec(ctx)
 	return err
 }
 
 func (r *redisRepository) GetServerSnapshot(ctx context.Context, serverID string) (*domain.Server, error) {
-	val, err := r.client.Get(ctx, r.snapshotKey+serverID).Result()
+	val, err := r.client.Get(ctx, r.snapshotKey+":"+serverID).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
@@ -95,5 +95,13 @@ func (r *redisRepository) SaveServerSnapshot(ctx context.Context, server *domain
 		return err
 	}
 
-	return r.client.Set(ctx, r.snapshotKey+server.ServerID, sbytes, 0).Err()
+	return r.client.Set(ctx, r.snapshotKey+":"+server.ServerID, sbytes, 0).Err()
+}
+
+func (r *redisRepository) DeleteServerSnapshot(ctx context.Context, serverID string) error {
+	err := r.client.Del(ctx, r.snapshotKey+":"+serverID).Err()
+	if err != nil && err != redis.Nil {
+		return nil
+	}
+	return err
 }

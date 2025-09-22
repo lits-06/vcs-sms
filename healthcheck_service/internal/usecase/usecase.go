@@ -143,19 +143,35 @@ func (h *healthCheckUseCase) checkServerHealth(server *domain.Server) (*domain.S
 func (h *healthCheckUseCase) IndexServerState(ctx context.Context, server *domain.Server) error {
 	err := h.repo.IndexServerState(ctx, server)
 	if err != nil {
-		h.log.Error("h.repo.IndexServerState: %v", err)
+		h.log.Error("repo.IndexServerState: %v", err)
 		return err
 	}
 
 	err = h.repo.SaveServerSnapshot(ctx, server)
 	if err != nil {
-		h.log.Error("h.repo.SaveServerSnapshot: %v", err)
+		h.log.Error("repo.SaveServerSnapshot: %v", err)
 		return err
 	}
 
 	err = h.cacheRepo.SaveServerSnapshot(ctx, server)
 	if err != nil {
-		h.log.Error("h.cacheRepo.SaveServerSnapshot: %v", err)
+		h.log.Error("cacheRepo.SaveServerSnapshot: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (h *healthCheckUseCase) DeleteServerSnapshot(ctx context.Context, serverID string) error {
+	err := h.repo.DeleteServerSnapshot(ctx, serverID)
+	if err != nil {
+		h.log.Error("repo.DeleteServerSnapshot: %v", err)
+		return err
+	}
+
+	err = h.cacheRepo.DeleteServerSnapshot(ctx, serverID)
+	if err != nil {
+		h.log.Error("cacheRepo.DeleteServerSnapshot: %v", err)
 		return err
 	}
 

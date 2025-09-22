@@ -46,7 +46,7 @@ func (p *Producer) getNewKafkaWriter(topic string) *kafka.Writer {
 }
 
 func (p *Producer) Run() {
-	p.writer = p.getNewKafkaWriter(stateTopic)
+	p.writer = p.getNewKafkaWriter(updateTopic)
 }
 
 func (p *Producer) Close() {
