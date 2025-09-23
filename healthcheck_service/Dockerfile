@@ -14,10 +14,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code
-COPY . .
+COPY ./healthcheck_service ./healthcheck_service
+
+COPY ./pkg ./pkg
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o healthcheck_service ./healthcheck_service/cmd/main.go
+RUN go build -o healthcheck ./healthcheck_service/cmd/main.go
 
 # Final stage
 FROM alpine:latest
@@ -29,10 +31,10 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 # Copy the binary from builder stage
-COPY --from=builder /app/healthcheck_service .
+COPY --from=builder /app/healthcheck ./healthcheck
 
 # Copy config file
-COPY --from=builder /app/healthcheck_service/config/config.yaml ./config/
+COPY --from=builder /app/healthcheck_service/config/config.yaml ./healthcheck_service/config/
 
 # Run the application
-CMD ["./healthcheck_service"]
+CMD ["./healthcheck"]

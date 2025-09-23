@@ -14,10 +14,14 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code
-COPY . .
+COPY ./auth_service ./auth_service
+
+COPY ./pkg ./pkg
+
+COPY ./proto ./proto
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o auth_service ./auth_service/cmd/main.go
+RUN go build -o auth ./auth_service/cmd/main.go
 
 # Final stage
 FROM alpine:latest
@@ -29,13 +33,13 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 # Copy the binary from builder stage
-COPY --from=builder /app/auth_service .
+COPY --from=builder /app/auth ./auth
 
 # Copy config file
-COPY --from=builder /app/auth_service/config/config.yaml ./config/
+COPY --from=builder /app/auth_service/config/config.yaml ./auth_service/config/
 
 # Expose HTTP port
 EXPOSE 8003
 
 # Run the application
-CMD ["./auth_service"]
+CMD ["./auth"]

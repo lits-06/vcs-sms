@@ -23,44 +23,44 @@ help: ## Display this help message
 ## Docker Commands
 build: ## Build all Docker containers
 	@echo "$(GREEN)Building all services...$(NC)"
-	docker-compose build
+	docker compose build
 
 up: ## Start all services
 	@echo "$(GREEN)Starting all services...$(NC)"
-	docker-compose up -d
+	docker compose up -d
 
-up-rebuild: ## Build and start all services
+build-up: ## Build and start all services
 	@echo "$(GREEN)Rebuilding and starting all services...$(NC)"
-	docker-compose up --build -d
+	docker compose up --build -d
 
 down: ## Stop all services
 	@echo "$(RED)Stopping all services...$(NC)"
-	docker-compose down
+	docker compose down
 
 clean: ## Stop and remove all containers, networks, and volumes
 	@echo "$(RED)Cleaning up all containers, networks, and volumes...$(NC)"
-	docker-compose down -v --remove-orphans
+	docker compose down -v --remove-orphans
 	docker system prune -f
 
 logs: ## View logs from all services
-	docker-compose logs -f
+	docker compose logs -f
 
 logs-service: ## View logs from specific service (usage: make logs-service SERVICE=service_name)
 	@if [ -z "$(SERVICE)" ]; then \
 		echo "$(RED)Error: Please specify SERVICE name. Example: make logs-service SERVICE=kafka$(NC)"; \
 		exit 1; \
 	fi
-	docker-compose logs -f $(SERVICE)
+	docker compose logs -f $(SERVICE)
 
 restart: ## Restart all services
 	@echo "$(GREEN)Restarting all services...$(NC)"
-	docker-compose restart
+	docker compose restart
 
 rebuild-service: ## Rebuild a specific service. Usage: make rebuild-service SERVICE=web
 	@if [ -z "$(SERVICE)" ]; then \
 		echo "Please specify SERVICE, e.g., make rebuild-service SERVICE=web"; \
 	else \
-		docker-compose build $(SERVICE); \
+		docker compose build $(SERVICE); \
 	fi
 
 ## Kafka Commands
@@ -158,6 +158,23 @@ elasticsearch-shell: ## Open Elasticsearch shell
 	@echo "$(BLUE)Opening Elasticsearch container shell...$(NC)"
 	docker exec -it sms_elasticsearch /bin/bash
 
+ELASTIC_URL=http://localhost:9200
+
+SNAPSHOT_INDEX=snapshotidx
+RECORD_INDEX=recordidx
+
+elasticsearch-create-indices: ## Create Elasticsearch indices
+	@echo "$(GREEN)Creating Elasticsearch indices...$(NC)"; \
+	if ! curl --max-time 5 -s -o /dev/null -w "%{http_code}" -X HEAD "$(ELASTIC_URL)/$(SNAPSHOT_INDEX)" | grep -q 200; then \
+		printf '{"settings":{"number_of_shards":1,"number_of_replicas":0},"mappings":{"properties":{"server_id":{"type":"keyword"},"port":{"type":"integer"},"status":{"type":"keyword"},"timestamp":{"type":"date"}}}}' | \
+		curl -X PUT "$(ELASTIC_URL)/$(SNAPSHOT_INDEX)" -H 'Content-Type: application/json' -d @- || true; \
+	fi
+	if ! curl --max-time 5 -s -o /dev/null -w "%{http_code}" -X HEAD "$(ELASTIC_URL)/$(RECORD_INDEX)" | grep -q 200; then \
+  		printf '{"settings":{"number_of_shards":1,"number_of_replicas":0},"mappings":{"properties":{"server_id":{"type":"keyword"},"port":{"type":"integer"},"status":{"type":"keyword"},"timestamp":{"type":"date"}}}}' | \
+		curl -X PUT "$(ELASTIC_URL)/$(RECORD_INDEX)" -H 'Content-Type: application/json' -d @- || true; \
+	fi
+	@echo "$(GREEN)Elasticsearch indices created successfully!$(NC)"
+
 ## Test Commands
 test: ## Run tests for all services
 	@echo "$(GREEN)Running tests...$(NC)"
@@ -199,3 +216,6 @@ teardown: kafka-delete-topics down clean ## Delete topics, stop services, and cl
 status: ## Show status of all services
 	@echo "$(BLUE)Service Status:$(NC)"
 	@docker-compose ps
+
+init: kafka-create-topics elasticsearch-create-indices ## Initialize Kafka topics and Elasticsearch indices
+	@echo "$(GREEN)✅ Initialization complete!$(NC)"

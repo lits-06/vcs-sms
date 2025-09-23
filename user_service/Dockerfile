@@ -14,10 +14,14 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code
-COPY . .
+COPY ./user_service ./user_service
+
+COPY ./pkg ./pkg
+
+COPY ./proto ./proto
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o user_service ./user_service/cmd/main.go
+RUN go build -o user ./user_service/cmd/main.go
 
 # Final stage
 FROM alpine:latest
@@ -29,13 +33,13 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 # Copy the binary from builder stage
-COPY --from=builder /app/user_service .
+COPY --from=builder /app/user ./user
 
 # Copy config file
-COPY --from=builder /app/user_service/config/config.yaml ./config/
+COPY --from=builder /app/user_service/config/config.yaml ./user_service/config/
 
 # Expose ports - HTTP and gRPC
 EXPOSE 8001 50001
 
 # Run the application
-CMD ["./user_service"]
+CMD ["./user"]

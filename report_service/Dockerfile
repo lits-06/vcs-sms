@@ -14,10 +14,12 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code
-COPY . .
+COPY ./report_service ./report_service
+
+COPY ./pkg ./pkg
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o report_service ./report_service/cmd/main.go
+RUN go build -o report ./report_service/cmd/main.go
 
 # Final stage
 FROM alpine:latest
@@ -29,16 +31,16 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /app
 
 # Copy the binary from builder stage
-COPY --from=builder /app/report_service .
+COPY --from=builder /app/report ./report
 
 # Copy config file
-COPY --from=builder /app/report_service/config/config.yaml ./config/
+COPY --from=builder /app/report_service/config/config.yaml ./report_service/config/
 
 # Copy HTML templates
-COPY --from=builder /app/report_service/internal/templates/ ./templates/
+COPY --from=builder /app/report_service/internal/templates/ ./report_service/internal/templates/
 
 # Expose HTTP port
 EXPOSE 8002
 
 # Run the application
-CMD ["./report_service"]
+CMD ["./report"]
