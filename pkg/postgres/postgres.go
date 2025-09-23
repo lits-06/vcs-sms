@@ -14,19 +14,19 @@ type Config struct {
 	Port     string `yaml:"port"`
 	User     string `yaml:"user"`
 	DBName   string `yaml:"dbName"`
-	SSLMode  bool   `yaml:"sslMode"`
+	SSLMode  string `yaml:"sslMode"`
 	Password string `yaml:"password"`
 }
 
 const (
-	maxConn           = 50
-	minConns          = 10
-	maxConnIdleTime   = 1 * time.Minute
-	maxConnLifetime   = 3 * time.Minute
+	maxConn         = 50
+	minConns        = 10
+	maxConnIdleTime = 1 * time.Minute
+	maxConnLifetime = 3 * time.Minute
 )
 
 func NewPostgresDB(cfg *Config) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%t",
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		cfg.Host,
 		cfg.User,
 		cfg.Password,
@@ -38,6 +38,10 @@ func NewPostgresDB(cfg *Config) (*gorm.DB, error) {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: logger.Default})
 	if err != nil {
 		return nil, fmt.Errorf("gorm.Open: %w", err)
+	}
+
+	if err := db.Exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`).Error; err != nil {
+		return nil, fmt.Errorf("create extension uuid-ossp: %w", err)
 	}
 
 	sqlDB, err := db.DB()

@@ -35,7 +35,7 @@ type Grpc struct {
 }
 
 type Redis struct {
-	*redis.Config
+	redis.Config `mapstructure:",squash"`
 	RefreshKey   string `mapstructure:"refreshKey"`
 	BlacklistKey string `mapstructure:"blacklistKey"`
 }

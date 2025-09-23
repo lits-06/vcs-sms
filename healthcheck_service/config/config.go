@@ -23,7 +23,7 @@ func init() {
 
 type Config struct {
 	ServiceName string         `mapstructure:"serviceName"`
-	Duration      time.Duration `mapstructure:"duration"`
+	Duration    time.Duration  `mapstructure:"duration"`
 	Logger      *logger.Config `mapstructure:"logger"`
 
 	Kafka  *kafka.Config   `mapstructure:"kafka"`
@@ -40,8 +40,8 @@ type Elasticsearch struct {
 }
 
 type Redis struct {
-	*redis.Config
-	SnapshotKey string `mapstructure:"snapshotKey"`
+	redis.Config `mapstructure:",squash"`
+	SnapshotKey  string `mapstructure:"snapshotKey"`
 }
 
 func InitConfig() (*Config, error) {

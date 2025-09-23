@@ -60,7 +60,7 @@ func (s *server) Run() error {
 		return err
 	}
 
-	redisUniversalClient := redispkg.NewUniversalRedisClient(s.cfg.Redis.Config)
+	redisUniversalClient := redispkg.NewUniversalRedisClient(&s.cfg.Redis.Config)
 	_, err = redisUniversalClient.Ping(ctx).Result()
 	if err != nil {
 		s.log.Error("Failed to connect to Redis", "error", err)

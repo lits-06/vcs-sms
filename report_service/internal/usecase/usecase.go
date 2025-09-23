@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/lits-06/vcs-sms/pkg/tracing"
-	"github.com/lits-06/vcs-sms/pkg/utils"
 	"github.com/lits-06/vcs-sms/report_service/config"
 	"github.com/lits-06/vcs-sms/report_service/internal/domain"
 	"github.com/opentracing/opentracing-go"
@@ -64,7 +64,7 @@ func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, sta
 	m.SetBody("text/html", htmlBody)
 
 	if stats.TotalServers > 0 {
-		excelBytes, err := uc.generateUptimeExcel(stats.ServerDetails)
+		excelBytes, err := uc.generateUptimeExcel(ctx, stats.ServerDetails)
 		if err != nil {
 			return tracing.TraceWithErr(span, fmt.Errorf("failed to generate excel report: %w", err))
 		}
@@ -84,15 +84,15 @@ func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, sta
 }
 
 func (uc *reportUseCase) generateUptimeReportHTML(ctx context.Context, stats *domain.UptimeStats) (string, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "reportUseCase.generateUptimeReportHTML")
+	span, _ := opentracing.StartSpanFromContext(ctx, "reportUseCase.generateUptimeReportHTML")
 	defer span.Finish()
 
-	projectRoot, err := utils.FindProjectRoot()
+	rootPath, err := os.Getwd()
 	if err != nil {
 		return "", tracing.TraceWithErr(span, fmt.Errorf("failed to find project root: %w", err))
 	}
 
-	templatePath := filepath.Join(projectRoot, "report_service", "internal", "templates", "uptime_report.html")
+	templatePath := filepath.Join(rootPath, "report_service", "internal", "templates", "uptime_report.html")
 
 	t, err := template.ParseFiles(templatePath)
 	if err != nil {
@@ -107,7 +107,10 @@ func (uc *reportUseCase) generateUptimeReportHTML(ctx context.Context, stats *do
 	return buf.String(), nil
 }
 
-func (uc *reportUseCase) generateUptimeExcel(details []domain.ServerUptimeDetail) ([]byte, error) {
+func (uc *reportUseCase) generateUptimeExcel(ctx context.Context, details []domain.ServerUptimeDetail) ([]byte, error) {
+	span, _ := opentracing.StartSpanFromContext(ctx, "reportUseCase.generateUptimeExcel")
+	defer span.Finish()
+
 	f := excelize.NewFile()
 	sheet := "UptimeReport"
 	index, _ := f.NewSheet(sheet)
