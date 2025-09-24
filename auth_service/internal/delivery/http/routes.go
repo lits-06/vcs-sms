@@ -7,14 +7,10 @@ import (
 )
 
 func (h *authHandler) RegisterRoutes(r *gin.Engine) {
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/health", h.Health)
+
 	auth := r.Group("/api/auth")
-	auth.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	auth.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"message": "Auth Service is running",
-		})
-	})
 	auth.POST("/login", h.Login)
 	auth.POST("/refresh", h.RefreshAccessToken)
 }

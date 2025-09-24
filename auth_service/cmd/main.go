@@ -1,5 +1,16 @@
 package main
 
+// @title Auth Service API
+// @version 1.0
+// @description This is the Auth Service API for VCS-SMS system
+
+// @host auth.localhost
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
 import (
 	"flag"
 	"log"
@@ -25,4 +36,3 @@ func main() {
 	s := server.NewServer(appLogger, cfg)
 	appLogger.Fatal(s.Run())
 }
-
