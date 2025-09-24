@@ -8,14 +8,9 @@ import (
 )
 
 func (h *userHandler) RegisterRoutes(r *gin.Engine) {
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/health", h.Health)
 	user := r.Group("/api/users")
-	user.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	user.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"message": "User Service is running",
-		})
-	})
 	user.POST("/register", h.Register)
 	user.Use(h.middleware.RequireAuth())
 	user.POST("/scopes", h.middleware.RequireScopes(constants.UserScopeUpdate), h.AddUserScope)

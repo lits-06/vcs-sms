@@ -1,5 +1,16 @@
 package main
 
+// @title User Service API
+// @version 1.0
+// @description This is the User Service API for VCS-SMS system
+
+// @host user.localhost
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
 import (
 	"flag"
 	"log"
