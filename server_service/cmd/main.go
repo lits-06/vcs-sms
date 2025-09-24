@@ -1,5 +1,17 @@
 package main
 
+// @title		Server Service API
+// @version		1.0
+// @description	This is the Server Service API for VCS-SMS system
+// @termsOfService	http://swagger.io/terms/
+//
+// @host server.localhost
+//
+// @securityDefinitions.apikey	BearerAuth
+// @in							header
+// @name						Authorization
+// @description				Type "Bearer" followed by a space and JWT token.
+
 import (
 	"flag"
 	"log"

@@ -8,16 +8,10 @@ import (
 )
 
 func (h *serverHandler) RegisterRoutes(r *gin.Engine) {
-	server := r.Group("/api/servers")
-	server.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"status":  "ok",
-			"message": "Server Service is running",
-		})
-	})
-	server.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/health", h.Health)
 
-	// Protected routes
+	server := r.Group("/api/servers")
 	server.Use(h.middleware.RequireAuth())
 
 	server.POST("/", h.middleware.RequireScopes(constants.ServerScopeCreate), h.CreateServer)
