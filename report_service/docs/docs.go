@@ -15,7 +15,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/reports": {
+        "/api/reports": {
             "post": {
                 "security": [
                     {
@@ -40,7 +40,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UptimeRequest"
+                            "$ref": "#/definitions/github_com_lits-06_vcs-sms_report_service_internal_dto.UptimeRequest"
                         }
                     }
                 ],
@@ -48,36 +48,51 @@ const docTemplate = `{
                     "200": {
                         "description": "Report created successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Internal server error",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check if the report service is running",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "Service is running",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
@@ -85,7 +100,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.UptimeRequest": {
+        "github_com_lits-06_vcs-sms_report_service_internal_dto.UptimeRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -103,18 +118,35 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "httpresponse.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
+	Version:          "1.0",
+	Host:             "report.localhost",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Report Service API",
+	Description:      "API for generating and managing uptime reports",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

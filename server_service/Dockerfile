@@ -33,9 +33,6 @@ WORKDIR /app
 # Copy the binary from builder stage
 COPY --from=builder /app/server ./server
 
-# Copy config file
-COPY --from=builder /app/server_service/config/config.yaml ./server_service/config/
-
 # Expose HTTP port
 EXPOSE 8000
 

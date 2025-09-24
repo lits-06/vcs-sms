@@ -1,5 +1,5 @@
 definitions:
-  dto.AddUserScopeRequest:
+  github_com_lits-06_vcs-sms_user_service_internal_dto.AddUserScopeRequest:
     properties:
       email:
         example: user@example.com
@@ -15,7 +15,7 @@ definitions:
     - email
     - scopes
     type: object
-  dto.RegisterRequest:
+  github_com_lits-06_vcs-sms_user_service_internal_dto.RegisterRequest:
     properties:
       email:
         example: user@example.com
@@ -32,7 +32,7 @@ definitions:
     - password
     - username
     type: object
-  dto.RemoveUserScopeRequest:
+  github_com_lits-06_vcs-sms_user_service_internal_dto.RemoveUserScopeRequest:
     properties:
       email:
         example: user@example.com
@@ -47,10 +47,20 @@ definitions:
     - email
     - scopes
     type: object
+  httpresponse.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+host: user.localhost
 info:
   contact: {}
+  description: This is the User Service API for VCS-SMS system
+  title: User Service API
+  version: "1.0"
 paths:
-  /register:
+  /api/users/register:
     post:
       consumes:
       - application/json
@@ -61,32 +71,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.RegisterRequest'
+          $ref: '#/definitions/github_com_lits-06_vcs-sms_user_service_internal_dto.RegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: User registered successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to register user
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       summary: Register a new user
       tags:
       - User
-  /user/scopes:
+  /api/users/scopes:
     delete:
       consumes:
       - application/json
@@ -97,40 +101,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.RemoveUserScopeRequest'
+          $ref: '#/definitions/github_com_lits-06_vcs-sms_user_service_internal_dto.RemoveUserScopeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: User scope removed successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to remove user scope
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: Remove scopes from user
@@ -146,43 +140,52 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.AddUserScopeRequest'
+          $ref: '#/definitions/github_com_lits-06_vcs-sms_user_service_internal_dto.AddUserScopeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: User scope added successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to add user scope
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: Add scopes to user
       tags:
       - User
+  /health:
+    get:
+      description: Get health status of the User Service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is running
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      summary: Health check
+      tags:
+      - Health
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

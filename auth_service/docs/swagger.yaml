@@ -1,5 +1,5 @@
 definitions:
-  dto.LoginRequest:
+  github_com_lits-06_vcs-sms_auth_service_internal_dto.LoginRequest:
     properties:
       email:
         type: string
@@ -10,15 +10,25 @@ definitions:
     - email
     - password
     type: object
-  dto.RefreshTokenRequest:
+  github_com_lits-06_vcs-sms_auth_service_internal_dto.RefreshTokenRequest:
     properties:
       refresh_token:
         type: string
     required:
     - refresh_token
     type: object
+  httpresponse.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+host: auth.localhost
 info:
   contact: {}
+  description: This is the Auth Service API for VCS-SMS system
+  title: Auth Service API
+  version: "1.0"
 paths:
   /api/auth/login:
     post:
@@ -31,28 +41,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.LoginRequest'
+          $ref: '#/definitions/github_com_lits-06_vcs-sms_auth_service_internal_dto.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: User logged in successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to login
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       summary: Login user
       tags:
       - Auth
@@ -67,29 +71,42 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.RefreshTokenRequest'
+          $ref: '#/definitions/github_com_lits-06_vcs-sms_auth_service_internal_dto.RefreshTokenRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Access token refreshed successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to refresh access token
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       summary: Refresh access token
       tags:
       - Auth
+  /health:
+    get:
+      description: Check if the auth service is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is running
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      summary: Health check
+      tags:
+      - Health
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

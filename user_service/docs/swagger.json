@@ -1,10 +1,14 @@
 {
     "swagger": "2.0",
     "info": {
-        "contact": {}
+        "description": "This is the User Service API for VCS-SMS system",
+        "title": "User Service API",
+        "contact": {},
+        "version": "1.0"
     },
+    "host": "user.localhost",
     "paths": {
-        "/register": {
+        "/api/users/register": {
             "post": {
                 "description": "Register a new user with email, username and password",
                 "consumes": [
@@ -24,7 +28,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.RegisterRequest"
+                            "$ref": "#/definitions/github_com_lits-06_vcs-sms_user_service_internal_dto.RegisterRequest"
                         }
                     }
                 ],
@@ -32,34 +36,25 @@
                     "200": {
                         "description": "User registered successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to register user",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
             }
         },
-        "/user/scopes": {
+        "/api/users/scopes": {
             "post": {
                 "security": [
                     {
@@ -84,7 +79,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.AddUserScopeRequest"
+                            "$ref": "#/definitions/github_com_lits-06_vcs-sms_user_service_internal_dto.AddUserScopeRequest"
                         }
                     }
                 ],
@@ -92,46 +87,31 @@
                     "200": {
                         "description": "User scope added successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to add user scope",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
@@ -160,7 +140,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.RemoveUserScopeRequest"
+                            "$ref": "#/definitions/github_com_lits-06_vcs-sms_user_service_internal_dto.RemoveUserScopeRequest"
                         }
                     }
                 ],
@@ -168,46 +148,51 @@
                     "200": {
                         "description": "User scope removed successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to remove user scope",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Get health status of the User Service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "Service is running",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
@@ -215,7 +200,7 @@
         }
     },
     "definitions": {
-        "dto.AddUserScopeRequest": {
+        "github_com_lits-06_vcs-sms_user_service_internal_dto.AddUserScopeRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -238,7 +223,7 @@
                 }
             }
         },
-        "dto.RegisterRequest": {
+        "github_com_lits-06_vcs-sms_user_service_internal_dto.RegisterRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -261,7 +246,7 @@
                 }
             }
         },
-        "dto.RemoveUserScopeRequest": {
+        "github_com_lits-06_vcs-sms_user_service_internal_dto.RemoveUserScopeRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -282,6 +267,23 @@
                     ]
                 }
             }
+        },
+        "httpresponse.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }

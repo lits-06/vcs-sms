@@ -33,8 +33,5 @@ WORKDIR /app
 # Copy the binary from builder stage
 COPY --from=builder /app/healthcheck ./healthcheck
 
-# Copy config file
-COPY --from=builder /app/healthcheck_service/config/config.yaml ./healthcheck_service/config/
-
 # Run the application
 CMD ["./healthcheck"]

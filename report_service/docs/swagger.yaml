@@ -1,5 +1,5 @@
 definitions:
-  dto.UptimeRequest:
+  github_com_lits-06_vcs-sms_report_service_internal_dto.UptimeRequest:
     properties:
       email:
         type: string
@@ -12,10 +12,20 @@ definitions:
     - end_date
     - start_date
     type: object
+  httpresponse.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+host: report.localhost
 info:
   contact: {}
+  description: API for generating and managing uptime reports
+  title: Report Service API
+  version: "1.0"
 paths:
-  /reports:
+  /api/reports:
     post:
       consumes:
       - application/json
@@ -26,38 +36,52 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.UptimeRequest'
+          $ref: '#/definitions/github_com_lits-06_vcs-sms_report_service_internal_dto.UptimeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Report created successfully
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Internal server error
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: Create uptime report
       tags:
       - Reports
+  /health:
+    get:
+      description: Check if the report service is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is running
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      summary: Health check
+      tags:
+      - Health
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

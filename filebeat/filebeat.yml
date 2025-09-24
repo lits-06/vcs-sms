@@ -1,0 +1,17 @@
+filebeat.inputs:
+- type: filestream
+  id: sms-logs
+  enabled: true
+  paths:
+    - /var/log/sms_logs/*.log
+
+output.logstash:
+  hosts: ["logstash:5044"]
+
+logging:
+level: info
+to_files: true
+files:
+  path: /var/log/filebeat
+  name: filebeat
+  keepfiles: 7

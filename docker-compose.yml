@@ -83,6 +83,44 @@ services:
     networks:
       - sms-network
 
+  logstash:
+    image: docker.elastic.co/logstash/logstash:9.1.4
+    container_name: sms_logstash
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+    depends_on:
+      - elasticsearch
+    networks:
+      - sms-network
+
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:9.1.4
+    container_name: sms_filebeat
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
+      - ./logs:/var/log/sms_logs
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - logstash
+    networks:
+      - sms-network
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.1.4
+    container_name: sms_kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: "http://elasticsearch:9200"
+    depends_on:
+      - elasticsearch
+    networks:
+      - sms-network
+
   jaeger:
     image: jaegertracing/all-in-one:1.73.0
     container_name: sms_jaeger
@@ -110,12 +148,13 @@ services:
     ports:
       - "50001:50001"  # gRPC port
     volumes:
-      - ./user_service/config/config.yaml:/app/config/config.yaml
+      - ./user_service/config/config.yaml:/app/user_service/config/config.yaml
+      - ./logs/user_service.log:/app/logs/user_service.log
     networks:
       - sms-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.user-api.rule=Host(`user.localhost`) && PathPrefix(`/api/users`)"
+      - "traefik.http.routers.user-api.rule=Host(`user.localhost`)"
       - "traefik.http.routers.user-api.entrypoints=web"
       - "traefik.http.services.user-api.loadbalancer.server.port=8001"
 
@@ -128,12 +167,13 @@ services:
       - redis
       - jaeger
     volumes:
-      - ./auth_service/config/config.yaml:/app/config/config.yaml
+      - ./auth_service/config/config.yaml:/app/auth_service/config/config.yaml
+      - ./logs/auth_service.log:/app/logs/auth_service.log
     networks:
       - sms-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.auth-api.rule=Host(`auth.localhost`) && PathPrefix(`/api/auth`)"
+      - "traefik.http.routers.auth-api.rule=Host(`auth.localhost`)"
       - "traefik.http.routers.auth-api.entrypoints=web"
       - "traefik.http.services.auth-api.loadbalancer.server.port=8003"
 
@@ -147,12 +187,13 @@ services:
       - kafka
       - jaeger
     volumes:
-      - ./server_service/config/config.yaml:/app/config/config.yaml
+      - ./server_service/config/config.yaml:/app/server_service/config/config.yaml
+      - ./logs/server_service.log:/app/logs/server_service.log
     networks:
       - sms-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.server-api.rule=Host(`server.localhost`) && PathPrefix(`/api/servers`)"
+      - "traefik.http.routers.server-api.rule=Host(`server.localhost`)"
       - "traefik.http.routers.server-api.entrypoints=web"
       - "traefik.http.services.server-api.loadbalancer.server.port=8000"
 
@@ -165,12 +206,14 @@ services:
       - elasticsearch
       - jaeger
     volumes:
-      - ./report_service/config/config.yaml:/app/config/config.yaml
+      - ./report_service/config/config.yaml:/app/report_service/config/config.yaml
+      - ./report_service/internal/templates/:/app/report_service/internal/templates/
+      - ./logs/report_service.log:/app/logs/report_service.log
     networks:
       - sms-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.report-api.rule=Host(`report.localhost`) && PathPrefix(`/api/reports`)"
+      - "traefik.http.routers.report-api.rule=Host(`report.localhost`)"
       - "traefik.http.routers.report-api.entrypoints=web"
       - "traefik.http.services.report-api.loadbalancer.server.port=8002"
 
@@ -185,7 +228,8 @@ services:
       - kafka
       - jaeger
     volumes:
-      - ./healthcheck_service/config/config.yaml:/app/config/config.yaml
+      - ./healthcheck_service/config/config.yaml:/app/healthcheck_service/config/config.yaml
+      - ./logs/healthcheck_service.log:/app/logs/healthcheck_service.log
     networks:
       - sms-network
     # No Traefik labels as this is a background service

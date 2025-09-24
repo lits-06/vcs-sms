@@ -33,12 +33,6 @@ WORKDIR /app
 # Copy the binary from builder stage
 COPY --from=builder /app/report ./report
 
-# Copy config file
-COPY --from=builder /app/report_service/config/config.yaml ./report_service/config/
-
-# Copy HTML templates
-COPY --from=builder /app/report_service/internal/templates/ ./report_service/internal/templates/
-
 # Expose HTTP port
 EXPOSE 8002
 

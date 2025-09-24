@@ -35,7 +35,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.LoginRequest"
+                            "$ref": "#/definitions/github_com_lits-06_vcs-sms_auth_service_internal_dto.LoginRequest"
                         }
                     }
                 ],
@@ -43,28 +43,19 @@ const docTemplate = `{
                     "200": {
                         "description": "User logged in successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to login",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
@@ -90,7 +81,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.RefreshTokenRequest"
+                            "$ref": "#/definitions/github_com_lits-06_vcs-sms_auth_service_internal_dto.RefreshTokenRequest"
                         }
                     }
                 ],
@@ -98,28 +89,39 @@ const docTemplate = `{
                     "200": {
                         "description": "Access token refreshed successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to refresh access token",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check if the auth service is running",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "Service is running",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
@@ -127,7 +129,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.LoginRequest": {
+        "github_com_lits-06_vcs-sms_auth_service_internal_dto.LoginRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -143,7 +145,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.RefreshTokenRequest": {
+        "github_com_lits-06_vcs-sms_auth_service_internal_dto.RefreshTokenRequest": {
             "type": "object",
             "required": [
                 "refresh_token"
@@ -153,18 +155,35 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "httpresponse.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
+	Version:          "1.0",
+	Host:             "auth.localhost",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Auth Service API",
+	Description:      "This is the Auth Service API for VCS-SMS system",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -35,9 +35,6 @@ WORKDIR /app
 # Copy the binary from builder stage
 COPY --from=builder /app/auth ./auth
 
-# Copy config file
-COPY --from=builder /app/auth_service/config/config.yaml ./auth_service/config/
-
 # Expose HTTP port
 EXPOSE 8003
 

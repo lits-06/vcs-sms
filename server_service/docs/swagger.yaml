@@ -1,43 +1,5 @@
 definitions:
-  domain.Server:
-    properties:
-      created_at:
-        description: Creation timestamp
-        example: "2023-01-01T00:00:00Z"
-        type: string
-      ipv4:
-        description: IPv4 address
-        example: 192.168.1.100
-        type: string
-      name:
-        description: Server name
-        example: web-server-01
-        type: string
-      port:
-        description: Port number
-        example: 80
-        maximum: 65535
-        minimum: 1024
-        type: integer
-      server_id:
-        description: Server ID
-        example: 550e8400-e29b-41d4-a716-446655440000
-        type: string
-      status:
-        description: Server status
-        enum:
-        - "ON"
-        - "OFF"
-        example: "ON"
-        type: string
-      updated_at:
-        description: Last update timestamp
-        example: "2023-01-01T00:00:00Z"
-        type: string
-    required:
-    - name
-    type: object
-  dto.CreateServerRequest:
+  github_com_lits-06_vcs-sms_server_service_internal_dto.CreateServerRequest:
     properties:
       ipv4:
         description: IPv4 address
@@ -66,7 +28,7 @@ definitions:
     - port
     - status
     type: object
-  dto.UpdateServerRequest:
+  github_com_lits-06_vcs-sms_server_service_internal_dto.UpdateServerRequest:
     properties:
       id:
         description: Server ID
@@ -81,10 +43,21 @@ definitions:
         example: updated-server-name
         type: string
     type: object
+  httpresponse.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+    type: object
+host: server.localhost
 info:
   contact: {}
+  description: This is the Server Service API for VCS-SMS system
+  termsOfService: http://swagger.io/terms/
+  title: Server Service API
+  version: "1.0"
 paths:
-  /servers:
+  /api/servers:
     get:
       consumes:
       - application/json
@@ -122,35 +95,25 @@ paths:
       - application/json
       responses:
         "200":
-          description: List of servers
+          description: List of servers with total count
           schema:
-            items:
-              $ref: '#/definitions/domain.Server'
-            type: array
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to view server
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: View servers
@@ -167,40 +130,30 @@ paths:
         name: server
         required: true
         schema:
-          $ref: '#/definitions/dto.CreateServerRequest'
+          $ref: '#/definitions/github_com_lits-06_vcs-sms_server_service_internal_dto.CreateServerRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Server created successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to create server
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: Create a new server
@@ -216,46 +169,36 @@ paths:
         name: server
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdateServerRequest'
+          $ref: '#/definitions/github_com_lits-06_vcs-sms_server_service_internal_dto.UpdateServerRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Server updated successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to update server
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: Update a server
       tags:
       - Server
-  /servers/{id}:
+  /api/servers/{id}:
     delete:
       consumes:
       - application/json
@@ -272,39 +215,29 @@ paths:
         "200":
           description: Server deleted successfully
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: Server ID is required
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to delete server
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: Delete a server
       tags:
       - Server
-  /servers/export:
+  /api/servers/export:
     get:
       consumes:
       - application/json
@@ -348,33 +281,25 @@ paths:
         "400":
           description: Invalid request
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to export servers
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: Export servers to Excel
       tags:
       - Server
-  /servers/import:
+  /api/servers/import:
     post:
       consumes:
       - multipart/form-data
@@ -391,35 +316,47 @@ paths:
         "200":
           description: Import result with success and failure counts
           schema:
-            additionalProperties: true
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "400":
           description: File is required
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "401":
           description: Unauthorized
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "403":
           description: Forbidden
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
         "500":
           description: Failed to import servers
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/httpresponse.Response'
       security:
       - BearerAuth: []
       summary: Import servers from Excel
       tags:
       - Server
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: Check if the Server Service is running and healthy
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Service is healthy
+          schema:
+            $ref: '#/definitions/httpresponse.Response'
+      summary: Health check
+      tags:
+      - Health
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

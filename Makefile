@@ -164,14 +164,18 @@ SNAPSHOT_INDEX=snapshotidx
 RECORD_INDEX=recordidx
 
 elasticsearch-create-indices: ## Create Elasticsearch indices
-	@echo "$(GREEN)Creating Elasticsearch indices...$(NC)"; \
-	if ! curl --max-time 5 -s -o /dev/null -w "%{http_code}" -X HEAD "$(ELASTIC_URL)/$(SNAPSHOT_INDEX)" | grep -q 200; then \
-		printf '{"settings":{"number_of_shards":1,"number_of_replicas":0},"mappings":{"properties":{"server_id":{"type":"keyword"},"port":{"type":"integer"},"status":{"type":"keyword"},"timestamp":{"type":"date"}}}}' | \
-		curl -X PUT "$(ELASTIC_URL)/$(SNAPSHOT_INDEX)" -H 'Content-Type: application/json' -d @- || true; \
+	@echo "$(GREEN)Creating Elasticsearch indices...$(NC)";
+	@if ! curl --max-time 5 -s -o /dev/null -w '%{http_code}' -X HEAD '$(ELASTIC_URL)/$(SNAPSHOT_INDEX)' | grep -q 200; then \
+		if ! printf '{\"settings\":{\"number_of_shards\":1,\"number_of_replicas\":0},\"mappings\":{\"properties\":{\"server_id\":{\"type\":\"keyword\"},\"port\":{\"type\":\"integer\"},\"status\":{\"type\":\"keyword\"},\"timestamp\":{\"type\":\"date\"}}}}' | \
+			curl -s -S -X PUT '$(ELASTIC_URL)/$(SNAPSHOT_INDEX)' -H 'Content-Type: application/json' -d @-; then \
+			echo '$(RED)Failed to create index $(SNAPSHOT_INDEX)!$(NC)'; \
+		fi; \
 	fi
-	if ! curl --max-time 5 -s -o /dev/null -w "%{http_code}" -X HEAD "$(ELASTIC_URL)/$(RECORD_INDEX)" | grep -q 200; then \
-  		printf '{"settings":{"number_of_shards":1,"number_of_replicas":0},"mappings":{"properties":{"server_id":{"type":"keyword"},"port":{"type":"integer"},"status":{"type":"keyword"},"timestamp":{"type":"date"}}}}' | \
-		curl -X PUT "$(ELASTIC_URL)/$(RECORD_INDEX)" -H 'Content-Type: application/json' -d @- || true; \
+	@if ! curl --max-time 5 -s -o /dev/null -w '%{http_code}' -X HEAD '$(ELASTIC_URL)/$(RECORD_INDEX)' | grep -q 200; then \
+  		if ! printf '{\"settings\":{\"number_of_shards\":1,\"number_of_replicas\":0},\"mappings\":{\"properties\":{\"server_id\":{\"type\":\"keyword\"},\"port\":{\"type\":\"integer\"},\"status\":{\"type\":\"keyword\"},\"timestamp\":{\"type\":\"date\"}}}}' | \
+			curl -s -S -X PUT '$(ELASTIC_URL)/$(RECORD_INDEX)' -H 'Content-Type: application/json' -d @-; then \
+			echo '$(RED)Failed to create index $(RECORD_INDEX)!$(NC)'; \
+		fi; \
 	fi
 	@echo "$(GREEN)Elasticsearch indices created successfully!$(NC)"
 

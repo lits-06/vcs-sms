@@ -35,9 +35,6 @@ WORKDIR /app
 # Copy the binary from builder stage
 COPY --from=builder /app/user ./user
 
-# Copy config file
-COPY --from=builder /app/user_service/config/config.yaml ./user_service/config/
-
 # Expose ports - HTTP and gRPC
 EXPOSE 8001 50001
 

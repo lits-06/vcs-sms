@@ -9,13 +9,14 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
+        "termsOfService": "http://swagger.io/terms/",
         "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/servers": {
+        "/api/servers": {
             "get": {
                 "security": [
                     {
@@ -79,48 +80,33 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "List of servers",
+                        "description": "List of servers with total count",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.Server"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to view server",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
@@ -149,7 +135,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateServerRequest"
+                            "$ref": "#/definitions/github_com_lits-06_vcs-sms_server_service_internal_dto.UpdateServerRequest"
                         }
                     }
                 ],
@@ -157,46 +143,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Server updated successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to update server",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
@@ -225,7 +196,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.CreateServerRequest"
+                            "$ref": "#/definitions/github_com_lits-06_vcs-sms_server_service_internal_dto.CreateServerRequest"
                         }
                     }
                 ],
@@ -233,52 +204,37 @@ const docTemplate = `{
                     "201": {
                         "description": "Server created successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to create server",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
             }
         },
-        "/servers/export": {
+        "/api/servers/export": {
             "get": {
                 "security": [
                     {
@@ -350,43 +306,31 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to export servers",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
             }
         },
-        "/servers/import": {
+        "/api/servers/import": {
             "post": {
                 "security": [
                     {
@@ -417,50 +361,37 @@ const docTemplate = `{
                     "200": {
                         "description": "Import result with success and failure counts",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "File is required",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to import servers",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
             }
         },
-        "/servers/{id}": {
+        "/api/servers/{id}": {
             "delete": {
                 "security": [
                     {
@@ -491,46 +422,54 @@ const docTemplate = `{
                     "200": {
                         "description": "Server deleted successfully",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "400": {
                         "description": "Server ID is required",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     },
                     "500": {
                         "description": "Failed to delete server",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/httpresponse.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Check if the Server Service is running and healthy",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "Service is healthy",
+                        "schema": {
+                            "$ref": "#/definitions/httpresponse.Response"
                         }
                     }
                 }
@@ -538,56 +477,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "domain.Server": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "created_at": {
-                    "description": "Creation timestamp",
-                    "type": "string",
-                    "example": "2023-01-01T00:00:00Z"
-                },
-                "ipv4": {
-                    "description": "IPv4 address",
-                    "type": "string",
-                    "example": "192.168.1.100"
-                },
-                "name": {
-                    "description": "Server name",
-                    "type": "string",
-                    "example": "web-server-01"
-                },
-                "port": {
-                    "description": "Port number",
-                    "type": "integer",
-                    "maximum": 65535,
-                    "minimum": 1024,
-                    "example": 80
-                },
-                "server_id": {
-                    "description": "Server ID",
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                },
-                "status": {
-                    "description": "Server status",
-                    "type": "string",
-                    "enum": [
-                        "ON",
-                        "OFF"
-                    ],
-                    "example": "ON"
-                },
-                "updated_at": {
-                    "description": "Last update timestamp",
-                    "type": "string",
-                    "example": "2023-01-01T00:00:00Z"
-                }
-            }
-        },
-        "dto.CreateServerRequest": {
+        "github_com_lits-06_vcs-sms_server_service_internal_dto.CreateServerRequest": {
             "type": "object",
             "required": [
                 "ipv4",
@@ -624,7 +514,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.UpdateServerRequest": {
+        "github_com_lits-06_vcs-sms_server_service_internal_dto.UpdateServerRequest": {
             "type": "object",
             "properties": {
                 "id": {
@@ -643,18 +533,35 @@ const docTemplate = `{
                     "example": "updated-server-name"
                 }
             }
+        },
+        "httpresponse.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "message": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
-	Host:             "",
+	Version:          "1.0",
+	Host:             "server.localhost",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Server Service API",
+	Description:      "This is the Server Service API for VCS-SMS system",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
