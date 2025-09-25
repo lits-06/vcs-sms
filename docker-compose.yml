@@ -101,9 +101,7 @@ services:
     container_name: sms_filebeat
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
-      - ./logs:/var/log/sms_logs
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./logs:/usr/share/filebeat/sms_logs
     depends_on:
       - logstash
     networks:

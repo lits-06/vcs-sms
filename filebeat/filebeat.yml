@@ -3,15 +3,15 @@ filebeat.inputs:
   id: sms-logs
   enabled: true
   paths:
-    - /var/log/sms_logs/*.log
+    - /usr/share/filebeat/sms_logs/*.log
 
 output.logstash:
   hosts: ["logstash:5044"]
 
-logging:
-level: info
-to_files: true
-files:
-  path: /var/log/filebeat
+logging.level: debug
+logging.to_stderr: true
+logging.to_files: true
+logging.files:
+  path: /usr/share/filebeat/logs
   name: filebeat
   keepfiles: 7

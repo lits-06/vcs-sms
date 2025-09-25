@@ -2,7 +2,7 @@
 # Makefile for VCS-SMS Project
 # ================================
 
-.PHONY: help build clean up down logs kafka-topics kafka-create-topics kafka-delete-topics kafka-list-topics test
+.PHONY: help build clean up down logs kafka-topics kafka-create-topics kafka-delete-topics kafka-list-topics test restart restart-service remove-containers remove-all recreate recreate-build recreate-service rebuild-service rebuild-recreate-service stop-remove-start full-reset
 
 # Default target
 .DEFAULT_GOAL := help
@@ -56,12 +56,72 @@ restart: ## Restart all services
 	@echo "$(GREEN)Restarting all services...$(NC)"
 	docker compose restart
 
-rebuild-service: ## Rebuild a specific service. Usage: make rebuild-service SERVICE=web
+restart-service: ## Restart a specific service (usage: make restart-service SERVICE=service_name)
 	@if [ -z "$(SERVICE)" ]; then \
-		echo "Please specify SERVICE, e.g., make rebuild-service SERVICE=web"; \
-	else \
-		docker compose build $(SERVICE); \
+		echo "$(RED)Error: Please specify SERVICE name. Example: make restart-service SERVICE=auth_service$(NC)"; \
+		exit 1; \
 	fi
+	@echo "$(GREEN)Restarting service: $(SERVICE)...$(NC)"
+	docker compose restart $(SERVICE)
+
+remove-containers: ## Remove all containers (keeps volumes and networks)
+	@echo "$(RED)Removing all containers...$(NC)"
+	docker compose rm -f
+
+remove-all: ## Remove containers, volumes, networks, and orphans
+	@echo "$(RED)Removing all containers, volumes, networks...$(NC)"
+	docker compose down -v --remove-orphans
+
+recreate: ## Remove and recreate all containers
+	@echo "$(YELLOW)Removing and recreating all containers...$(NC)"
+	docker compose down
+	docker compose up -d
+
+recreate-build: ## Remove, rebuild and recreate all containers
+	@echo "$(YELLOW)Removing, rebuilding and recreating all containers...$(NC)"
+	docker compose down
+	docker compose up --build -d
+
+recreate-service: ## Remove and recreate a specific service (usage: make recreate-service SERVICE=service_name)
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "$(RED)Error: Please specify SERVICE name. Example: make recreate-service SERVICE=auth_service$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)Recreating service: $(SERVICE)...$(NC)"
+	docker compose rm -f $(SERVICE)
+	docker compose up -d $(SERVICE)
+
+rebuild-service: ## Rebuild a specific service (usage: make rebuild-service SERVICE=service_name)
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "$(RED)Error: Please specify SERVICE name. Example: make rebuild-service SERVICE=auth_service$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)Rebuilding service: $(SERVICE)...$(NC)"
+	docker compose build $(SERVICE)
+
+rebuild: ## Rebuild and recreate a specific service (usage: make rebuild-recreate-service SERVICE=service_name)
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "$(RED)Error: Please specify SERVICE name. Example: make rebuild-recreate-service SERVICE=auth_service$(NC)"; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)Rebuilding and recreating service: $(SERVICE)...$(NC)"
+	docker compose stop $(SERVICE)
+	docker compose rm -f $(SERVICE)
+	docker compose build $(SERVICE)
+	docker compose up -d $(SERVICE)
+
+stop-remove-start: ## Stop, remove containers, and start again
+	@echo "$(YELLOW)Stopping, removing containers, and starting again...$(NC)"
+	docker compose stop
+	docker compose rm -f
+	docker compose up -d
+
+full-reset: ## Complete reset: stop, remove everything, rebuild, and start
+	@echo "$(RED)Performing full reset...$(NC)"
+	docker compose down -v --remove-orphans
+	docker system prune -f
+	docker compose build
+	docker compose up -d
 
 ## Kafka Commands
 kafka-topics: kafka-list-topics ## Alias for kafka-list-topics
@@ -223,3 +283,5 @@ status: ## Show status of all services
 
 init: kafka-create-topics elasticsearch-create-indices ## Initialize Kafka topics and Elasticsearch indices
 	@echo "$(GREEN)✅ Initialization complete!$(NC)"
+
+
