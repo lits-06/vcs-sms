@@ -115,6 +115,8 @@ func (uc *reportUseCase) generateUptimeExcel(ctx context.Context, details []doma
 	sheet := "UptimeReport"
 	index, _ := f.NewSheet(sheet)
 
+	f.DeleteSheet("Sheet1")
+
 	// Header
 	headers := []string{"Server ID", "Uptime Percentage"}
 	for i, h := range headers {
