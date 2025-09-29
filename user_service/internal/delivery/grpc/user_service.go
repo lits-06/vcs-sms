@@ -37,6 +37,7 @@ func (s *userService) GetUserByEmail(ctx context.Context, req *userpb.GetUserByE
 		User: &userpb.User{
 			Id:     user.ID,
 			Email:  user.Email,
+			Password: user.Password,
 			Scopes: convertScopes(&user.Scopes),
 		},
 	}, nil

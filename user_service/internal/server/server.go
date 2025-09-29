@@ -59,6 +59,12 @@ func (s *server) Run() error {
 		return err
 	}
 
+	err = domain.InitScopes(pgDB)
+	if err != nil {
+		s.log.Error("Failed to init scopes", "error", err)
+		return err
+	}
+
 	userRepo := repository.NewUserRepository(pgDB)
 	userUsecase := usecase.NewUserUsecase(userRepo)
 

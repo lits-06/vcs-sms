@@ -1,6 +1,11 @@
 package domain
 
-import "github.com/lits-06/vcs-sms/pkg/constants"
+import (
+	"fmt"
+
+	"github.com/lits-06/vcs-sms/pkg/constants"
+	"gorm.io/gorm"
+)
 
 type User struct {
 	ID       string  `gorm:"type:uuid;default:uuid_generate_v4();primaryKey"`
@@ -43,4 +48,33 @@ func IsValidScope(scope string) bool {
 	default:
 		return false
 	}
+}
+
+func InitScopes(db *gorm.DB) error {
+	scopes := []string{
+		constants.ServerScopeCreate,
+		constants.ServerScopeView,
+		constants.ServerScopeUpdate,
+		constants.ServerScopeDelete,
+		constants.ServerScopeImport,
+		constants.ServerScopeExport,
+		constants.ServerScopeReport,
+		constants.UserScopeUpdate,
+		constants.AdminScopeAll,
+	}
+
+	for _, scopeName := range scopes {
+		var scope Scope
+		if err := db.Where("name = ?", scopeName).First(&scope).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				if err := db.Create(&Scope{Name: scopeName}).Error; err != nil {
+					return fmt.Errorf("failed to create scope %s: %w", scopeName, err)
+				}
+			} else {
+				return fmt.Errorf("failed to query scope %s: %w", scopeName, err)
+			}
+		}
+	}
+
+	return nil
 }
