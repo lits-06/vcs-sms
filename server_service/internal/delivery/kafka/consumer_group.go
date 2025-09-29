@@ -83,7 +83,7 @@ func (cg *ConsumerGroup) consumeUpdateServerStatus(
 		}
 	}()
 
-	cg.log.Info("Starting consumer group: %v", r.Config().GroupID)
+	cg.log.Infof("Starting consumer group: %v", r.Config().GroupID)
 	wg := &sync.WaitGroup{}
 	for i := 0; i < workerNum; i++ {
 		wg.Add(1)
