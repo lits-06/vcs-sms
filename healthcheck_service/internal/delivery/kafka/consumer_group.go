@@ -87,7 +87,7 @@ func (cg *ConsumerGroup) consumerCreateServer(
 		}
 	}()
 
-	cg.log.Info("Starting consumer group: %v", r.Config().GroupID)
+	cg.log.Infof("Starting consumer group: %v", r.Config().GroupID)
 	wg := &sync.WaitGroup{}
 	for i := 0; i < workerNum; i++ {
 		wg.Add(1)
@@ -119,7 +119,7 @@ func (cg *ConsumerGroup) consumeDeleteServer(
 		}
 	}()
 
-	cg.log.Info("Starting consumer group: %v", r.Config().GroupID)
+	cg.log.Infof("Starting consumer group: %v", r.Config().GroupID)
 	wg := &sync.WaitGroup{}
 	for i := 0; i < workerNum; i++ {
 		wg.Add(1)

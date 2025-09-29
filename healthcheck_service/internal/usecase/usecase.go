@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"net"
+	"net/http"
 	"sync"
 	"time"
 
@@ -86,7 +86,7 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]
 	}
 
 	wg.Wait()
-	h.log.Info("Health check completed for all servers")
+	h.log.Debug("Health check completed for all servers")
 }
 
 func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) (*[]domain.Server, error) {
@@ -112,15 +112,14 @@ func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) (*[]doma
 		}
 	}
 
-	h.log.Debug("Retrieved %d servers from DB", len(*servers))
+	h.log.Debugf("Retrieved %d servers from DB", len(*servers))
 	return servers, nil
 }
 
 func (h *healthCheckUseCase) checkServerHealth(server *domain.Server) (*domain.Server, error) {
 	addr := fmt.Sprintf("localhost:%d/health", server.Port)
-	timeout := 1 * time.Second
 	start := time.Now()
-	conn, err := net.DialTimeout("tcp", addr, timeout)
+	resp, err := http.Get(addr)
 	responseTime := time.Since(start)
 	if err != nil {
 		h.log.Debug("Failed to ping id:%s port:%d (took %v): %v", server.ServerID, server.Port, responseTime, err)
@@ -131,7 +130,17 @@ func (h *healthCheckUseCase) checkServerHealth(server *domain.Server) (*domain.S
 		}, err
 	}
 
-	defer conn.Close()
+	defer resp.Body.Close()
+
+	h.log.Debugf("resp: %+v", resp)
+	
+	if resp.StatusCode != http.StatusOK {
+		return &domain.Server{
+			ServerID: server.ServerID,
+			Port:     server.Port,
+			Status:   domain.StatusOffline,
+		}, nil
+	}
 
 	return &domain.Server{
 		ServerID: server.ServerID,
