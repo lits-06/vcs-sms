@@ -42,9 +42,9 @@ func (a *authUsecase) Login(ctx context.Context, email, password string) (string
 	user := dto.UserResponseFromGrpc(res.User)
 
 	hashedPassword := user.Password
-	err = utils.VerifyPassword(password, hashedPassword)
+	err = utils.VerifyPassword(hashedPassword, password)
 	if err != nil {
-		return "", "", tracing.TraceWithErr(span, fmt.Errorf("utils.CheckPasswordHash: %w", err))
+		return "", "", tracing.TraceWithErr(span, fmt.Errorf("utils.VerifyPassword: %w", err))
 	}
 
 	scopes := domain.ScopesToStringSlice(user.Scopes)
@@ -59,7 +59,7 @@ func (a *authUsecase) Login(ctx context.Context, email, password string) (string
 		return "", "", tracing.TraceWithErr(span, fmt.Errorf("GenerateRefreshToken: %w", err))
 	}
 
-	err = a.cacheRepo.SetRefreshToken(ctx, refreshToken, user.Email, a.cfg.JWT.RefreshTTL)
+	err = a.cacheRepo.SetRefreshToken(ctx, user.Email, refreshToken, a.cfg.JWT.RefreshTTL)
 	if err != nil {
 		return "", "", tracing.TraceWithErr(span, fmt.Errorf("cacheRepo.Set: %w", err))
 	}
