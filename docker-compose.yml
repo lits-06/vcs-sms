@@ -13,7 +13,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"  # Traefik dashboard
+      - "8080:8080" # Traefik dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -120,12 +120,14 @@ services:
       - sms-network
 
   jaeger:
-    image: jaegertracing/all-in-one:1.73.0
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.10.0
     container_name: sms_jaeger
     ports:
       - "16686:16686"
-      - "14268:14268"
-      - "14250:14250"
+      - "4317:4317"
+      - "4318:4318"
+      - "5778:5778"
+      - "9411:9411"
     networks:
       - sms-network
     labels:
@@ -144,7 +146,7 @@ services:
       - postgres
       - jaeger
     ports:
-      - "50001:50001"  # gRPC port
+      - "50001:50001" # gRPC port
     volumes:
       - ./user_service/config/config.yaml:/app/user_service/config/config.yaml
       - ./logs/user_service.log:/app/logs/user_service.log

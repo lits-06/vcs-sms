@@ -226,13 +226,13 @@ RECORD_INDEX=recordidx
 elasticsearch-create-indices: ## Create Elasticsearch indices
 	@echo "$(GREEN)Creating Elasticsearch indices...$(NC)";
 	@if ! curl --max-time 5 -s -o /dev/null -w '%{http_code}' -X HEAD '$(ELASTIC_URL)/$(SNAPSHOT_INDEX)' | grep -q 200; then \
-		if ! printf '{\"settings\":{\"number_of_shards\":1,\"number_of_replicas\":0},\"mappings\":{\"properties\":{\"server_id\":{\"type\":\"keyword\"},\"port\":{\"type\":\"integer\"},\"status\":{\"type\":\"keyword\"},\"timestamp\":{\"type\":\"date\"}}}}' | \
+		if ! printf '{"settings":{"number_of_shards":1,"number_of_replicas":0},"mappings":{"properties":{"server_id":{"type":"keyword"},"port":{"type":"integer"},"status":{"type":"keyword"},"timestamp":{"type":"date"}}}}' | \
 			curl -s -S -X PUT '$(ELASTIC_URL)/$(SNAPSHOT_INDEX)' -H 'Content-Type: application/json' -d @-; then \
 			echo '$(RED)Failed to create index $(SNAPSHOT_INDEX)!$(NC)'; \
 		fi; \
 	fi
 	@if ! curl --max-time 5 -s -o /dev/null -w '%{http_code}' -X HEAD '$(ELASTIC_URL)/$(RECORD_INDEX)' | grep -q 200; then \
-  		if ! printf '{\"settings\":{\"number_of_shards\":1,\"number_of_replicas\":0},\"mappings\":{\"properties\":{\"server_id\":{\"type\":\"keyword\"},\"port\":{\"type\":\"integer\"},\"status\":{\"type\":\"keyword\"},\"timestamp\":{\"type\":\"date\"}}}}' | \
+  		if ! printf '{"settings":{"number_of_shards":1,"number_of_replicas":0},"mappings":{"properties":{"server_id":{"type":"keyword"},"port":{"type":"integer"},"status":{"type":"keyword"},"timestamp":{"type":"date"}}}}' | \
 			curl -s -S -X PUT '$(ELASTIC_URL)/$(RECORD_INDEX)' -H 'Content-Type: application/json' -d @-; then \
 			echo '$(RED)Failed to create index $(RECORD_INDEX)!$(NC)'; \
 		fi; \
@@ -283,5 +283,9 @@ status: ## Show status of all services
 
 init: kafka-create-topics elasticsearch-create-indices ## Initialize Kafka topics and Elasticsearch indices
 	@echo "$(GREEN)✅ Initialization complete!$(NC)"
+
+clear-snapshotidx: ## Clear all documents in snapshotidx
+	curl -X POST "$(ELASTIC_URL)/$(SNAPSHOT_INDEX)/_delete_by_query" -H 'Content-Type: application/json' -d '{"query": {"match_all": {}}}'
+
 
 
