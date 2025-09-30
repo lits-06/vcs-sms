@@ -71,7 +71,7 @@ func (h *authHandler) Login(c *gin.Context) {
 		})
 		return
 	}
-	h.log.Info("User logged in successfully", "user_email", req.Email)
+	h.log.Info("User logged in successfully ", "user_email: ", req.Email)
 	c.JSON(http.StatusOK, httpresponse.Response{
 		Message: "User logged in successfully",
 		Data: map[string]string{

@@ -39,7 +39,7 @@ func (s *server) Run() error {
 
 	tracer, closer, err := tracing.NewJaegerTracer(s.cfg.Jaeger)
 	if err != nil {
-		s.log.Error("Failed to create Jaeger tracer", "error", err)
+		s.log.Error("Failed to create Jaeger tracer ", "error: ", err)
 		return err
 	}
 	defer closer.Close()
@@ -48,7 +48,7 @@ func (s *server) Run() error {
 	redisUniversalClient := redispkg.NewUniversalRedisClient(&s.cfg.Redis.Config)
 	_, err = redisUniversalClient.Ping(ctx).Result()
 	if err != nil {
-		s.log.Error("Failed to connect to Redis", "error", err)
+		s.log.Error("Failed to connect to Redis ", "error: ", err)
 		return err
 	}
 	redisClient, ok := redisUniversalClient.(*redis.Client)
@@ -59,7 +59,7 @@ func (s *server) Run() error {
 
 	grpcConn, err := client.NewUserServiceConn(ctx, s.cfg)
 	if err != nil {
-		s.log.Error("Failed to connect to gRPC user service", "error", err)
+		s.log.Error("Failed to connect to gRPC user service ", "error: ", err)
 		return err
 	}
 	defer grpcConn.Close()
@@ -75,11 +75,11 @@ func (s *server) Run() error {
 
 	go func() {
 		if err := router.Run(s.cfg.Port); err != nil {
-			s.log.Error("Failed to run HTTP server", "error", err)
+			s.log.Error("Failed to run HTTP server ", "error: ", err)
 			cancel()
 		}
 	}()
-	s.log.Info("Auth service is running", "port", s.cfg.Port)
+	s.log.Info("Auth service is running ", "port: ", s.cfg.Port)
 
 	<-ctx.Done()
 	s.log.Info("Shutting down auth service...")
