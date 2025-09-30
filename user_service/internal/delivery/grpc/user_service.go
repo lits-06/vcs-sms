@@ -29,16 +29,16 @@ func (s *userService) GetUserByEmail(ctx context.Context, req *userpb.GetUserByE
 
 	user, err := s.userUC.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		s.log.Error("userUC.GetUserByEmail: %v", err)
+		s.log.Errorf("userUC.GetUserByEmail: %v", err)
 		return nil, tracing.TraceWithErr(span, fmt.Errorf("userUC.GetUserByEmail: %w", err))
 	}
 
 	return &userpb.GetUserByEmailResponse{
 		User: &userpb.User{
-			Id:     user.ID,
-			Email:  user.Email,
+			Id:       user.ID,
+			Email:    user.Email,
 			Password: user.Password,
-			Scopes: convertScopes(&user.Scopes),
+			Scopes:   convertScopes(&user.Scopes),
 		},
 	}, nil
 }

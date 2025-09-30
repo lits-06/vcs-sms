@@ -71,7 +71,7 @@ func (h *userHandler) Register(c *gin.Context) {
 		})
 		return
 	}
-	h.log.Info("User registered successfully", "user_id", user.ID)
+	h.log.Info("User registered successfully ", "user_id: ", user.ID)
 	c.JSON(http.StatusOK, httpresponse.Response{
 		Message: "User registered successfully",
 	})
@@ -112,7 +112,7 @@ func (h *userHandler) AddUserScope(c *gin.Context) {
 		})
 		return
 	}
-	h.log.Info("User scope added successfully", "email", req.Email)
+	h.log.Info("User scope added successfully ", "email: ", req.Email)
 	c.JSON(http.StatusOK, httpresponse.Response{
 		Message: "User scope added successfully",
 	})
@@ -152,7 +152,7 @@ func (h *userHandler) RemoveUserScope(c *gin.Context) {
 		})
 		return
 	}
-	h.log.Info("User scope removed successfully", "email", req.Email)
+	h.log.Info("User scope removed successfully ", "email: ", req.Email)
 	c.JSON(http.StatusOK, httpresponse.Response{
 		Message: "User scope removed successfully",
 	})

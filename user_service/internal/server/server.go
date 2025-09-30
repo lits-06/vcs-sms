@@ -41,7 +41,7 @@ func (s *server) Run() error {
 
 	tracer, closer, err := tracing.NewJaegerTracer(s.cfg.Jaeger)
 	if err != nil {
-		s.log.Error("Failed to create Jaeger tracer", "error", err)
+		s.log.Error("Failed to create Jaeger tracer ", "error: ", err)
 		return err
 	}
 	defer closer.Close()
@@ -49,19 +49,19 @@ func (s *server) Run() error {
 
 	pgDB, err := postgres.NewPostgresDB(s.cfg.Postgres)
 	if err != nil {
-		s.log.Error("Failed to connect to Postgres", "error", err)
+		s.log.Error("Failed to connect to Postgres ", "error: ", err)
 		return err
 	}
-	
+
 	err = pgDB.AutoMigrate(&domain.User{}, &domain.Scope{})
 	if err != nil {
-		s.log.Error("Failed to auto migrate Postgres", "error", err)
+		s.log.Error("Failed to auto migrate Postgres ", "error: ", err)
 		return err
 	}
 
 	err = domain.InitScopes(pgDB)
 	if err != nil {
-		s.log.Error("Failed to init scopes", "error", err)
+		s.log.Error("Failed to init scopes ", "error: ", err)
 		return err
 	}
 
@@ -76,7 +76,7 @@ func (s *server) Run() error {
 
 	l, err := net.Listen("tcp", s.cfg.GRPC.Port)
 	if err != nil {
-		s.log.Error("Failed to listen tcp", "error", err)
+		s.log.Error("Failed to listen tcp ", "error: ", err)
 		return err
 	}
 	defer l.Close()
@@ -86,17 +86,17 @@ func (s *server) Run() error {
 	userpb.RegisterUserServiceServer(grpcServer, userService)
 
 	go func() {
-		s.log.Info("Starting gRPC server", "port", s.cfg.GRPC.Port)
+		s.log.Info("Starting gRPC server ", "port: ", s.cfg.GRPC.Port)
 		s.log.Fatal(grpcServer.Serve(l))
 	}()
 
 	go func() {
 		if err := router.Run(s.cfg.Port); err != nil {
-			s.log.Error("Failed to run HTTP server", "error", err)
+			s.log.Error("Failed to run HTTP server ", "error: ", err)
 			cancel()
 		}
 	}()
-	s.log.Info("User service is running", "http_port", s.cfg.Port, "grpc_port", s.cfg.GRPC.Port)
+	s.log.Info("User service is running ", "http_port: ", s.cfg.Port, "grpc_port: ", s.cfg.GRPC.Port)
 
 	<-ctx.Done()
 
