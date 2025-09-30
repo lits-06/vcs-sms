@@ -72,7 +72,7 @@ func (h *serverHandler) CreateServer(c *gin.Context) {
 		return
 	}
 
-	server, err := h.serverUsecase.CreateServer(ctx, req.Name, req.Status, req.IPv4, req.Port)
+	server, err := h.serverUsecase.CreateServer(ctx, req.Name, req.IPv4, req.Port)
 	if err != nil {
 		h.log.Errorf("Failed to create server: %v", tracing.TraceWithErr(span, err))
 		c.JSON(http.StatusInternalServerError, httpresponse.Response{
@@ -80,7 +80,7 @@ func (h *serverHandler) CreateServer(c *gin.Context) {
 		})
 		return
 	}
-	h.log.Info("Server created successfully", "server_id", server.ID)
+	h.log.Info("Server created successfully ", "server_id: ", server.ID)
 	c.JSON(http.StatusCreated, httpresponse.Response{
 		Message: "Server created successfully",
 	})
@@ -129,7 +129,7 @@ func (h *serverHandler) ViewServer(c *gin.Context) {
 		})
 		return
 	}
-	h.log.Info("Server viewed successfully", "total_servers", total)
+	h.log.Info("Server viewed successfully ", "total_servers: ", total)
 	c.JSON(http.StatusOK, httpresponse.Response{
 		Message: fmt.Sprintf("Total servers: %d", total),
 		Data:    servers,
@@ -172,7 +172,7 @@ func (h *serverHandler) UpdateServer(c *gin.Context) {
 		})
 		return
 	}
-	h.log.Info("Server updated successfully", "server_id", req.ID)
+	h.log.Info("Server updated successfully ", "server_id: ", req.ID)
 	c.JSON(http.StatusOK, httpresponse.Response{
 		Message: "Server updated successfully",
 	})
@@ -212,7 +212,7 @@ func (h *serverHandler) DeleteServer(c *gin.Context) {
 		})
 		return
 	}
-	h.log.Info("Server deleted successfully", "server_id", serverID)
+	h.log.Info("Server deleted successfully ", "server_id: ", serverID)
 	c.JSON(http.StatusOK, httpresponse.Response{
 		Message: "Server deleted successfully",
 	})
@@ -267,10 +267,10 @@ func (h *serverHandler) ImportServersFromExcel(c *gin.Context) {
 		return
 	}
 
-	h.log.Info("Servers imported successfully",
-		"filename", fileHeader.Filename,
-		"success_count", response.SuccessCount,
-		"failure_count", response.FailureCount)
+	h.log.Info("Servers imported successfully ",
+		"filename: ", fileHeader.Filename,
+		"success_count: ", response.SuccessCount,
+		"failure_count: ", response.FailureCount)
 	c.JSON(http.StatusOK, httpresponse.Response{
 		Message: "Servers imported successfully",
 		Data:    response,

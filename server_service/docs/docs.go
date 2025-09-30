@@ -482,8 +482,7 @@ const docTemplate = `{
             "required": [
                 "ipv4",
                 "name",
-                "port",
-                "status"
+                "port"
             ],
             "properties": {
                 "ipv4": {
@@ -502,15 +501,6 @@ const docTemplate = `{
                     "maximum": 65535,
                     "minimum": 1,
                     "example": 80
-                },
-                "status": {
-                    "description": "Server status",
-                    "type": "string",
-                    "enum": [
-                        "ON",
-                        "OFF"
-                    ],
-                    "example": "ON"
                 }
             }
         },

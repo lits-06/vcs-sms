@@ -13,8 +13,8 @@ import (
 )
 
 type Producer struct {
-	log    logger.Logger
-	cfg    *config.Config
+	log          logger.Logger
+	cfg          *config.Config
 	createWriter *kafka.Writer
 	deleteWriter *kafka.Writer
 }
@@ -53,13 +53,13 @@ func (p *Producer) Run() {
 
 func (p *Producer) Close() {
 	p.createWriter.Close()
-	p.deleteWriter.Close()	
+	p.deleteWriter.Close()
 }
 
 func (p *Producer) PublishServerCreate(ctx context.Context, server *domain.Server) error {
 	data, err := json.Marshal(server)
 	if err != nil {
-		p.log.Error("json.Marshal: %v", err)
+		p.log.Errorf("json.Marshal: %v", err)
 		return err
 	}
 
@@ -67,6 +67,8 @@ func (p *Producer) PublishServerCreate(ctx context.Context, server *domain.Serve
 		Key:   []byte(server.ID),
 		Value: data,
 	}
+
+	p.log.Debugf("Producing message to topic %s: %s", p.createWriter.Topic, string(data))
 
 	return p.createWriter.WriteMessages(ctx, msg)
 }
@@ -76,6 +78,8 @@ func (p *Producer) PublishServerDelete(ctx context.Context, serverID string) err
 		Key:   []byte(serverID),
 		Value: []byte(serverID),
 	}
+
+	p.log.Debugf("Producing message to topic %s: %s", p.deleteWriter.Topic, serverID)
 
 	return p.deleteWriter.WriteMessages(ctx, msg)
 }

@@ -15,7 +15,7 @@ import (
 
 type serverUsecase struct {
 	serverRepo domain.Repository
-	publisher   domain.EventPublisher
+	publisher  domain.EventPublisher
 }
 
 func NewServerUsecase(serverRepo domain.Repository, publisher domain.EventPublisher) domain.UseCase {
@@ -25,7 +25,7 @@ func NewServerUsecase(serverRepo domain.Repository, publisher domain.EventPublis
 	}
 }
 
-func (uc *serverUsecase) CreateServer(ctx context.Context, name, status, ipv4 string, port int) (*domain.Server, error) {
+func (uc *serverUsecase) CreateServer(ctx context.Context, name, ipv4 string, port int) (*domain.Server, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverUsecase.CreateServer")
 	defer span.Finish()
 
@@ -38,16 +38,11 @@ func (uc *serverUsecase) CreateServer(ctx context.Context, name, status, ipv4 st
 		return nil, tracing.TraceWithErr(span, fmt.Errorf("server with name %s: %w", name, domain.ErrServerExists))
 	}
 
-	// Validate status
-	if !domain.IsStatusValid(status) {
-		return nil, tracing.TraceWithErr(span, fmt.Errorf("invalid server status"))
-	}
-
 	// Create server entity
 	server := &domain.Server{
 		Name:      name,
-		Status:    status,
-		Port:     port,
+		Status:    domain.StatusOffline, // Default status is OFF
+		Port:      port,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		IPv4:      ipv4,
@@ -185,16 +180,15 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 
 	// Skip header row and process data rows
 	for i, row := range rows[1:] {
-		if len(row) < 4 {
+		if len(row) < 3 {
 			continue
 		}
 
 		serverName := row[0]
 		serverIPv4 := row[1]
-		status := row[2]
-		portStr := row[3]
+		portStr := row[2]
 
-		if serverName == "" || serverIPv4 == "" || status == "" || portStr == "" {
+		if serverName == "" || serverIPv4 == "" || portStr == "" {
 			result.FailureCount++
 			result.FailureServers = append(result.FailureServers, fmt.Sprintf("row:%d - missing required fields", i))
 			continue
@@ -220,15 +214,8 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 			continue
 		}
 
-		// Validate status
-		if !domain.IsStatusValid(status) {
-			result.FailureCount++
-			result.FailureServers = append(result.FailureServers, fmt.Sprintf("row:%d name:%s - invalid status", i, serverName))
-			continue
-		}
-
 		// Create server
-		_, err = uc.CreateServer(ctx, serverName, status, serverIPv4, port)
+		_, err = uc.CreateServer(ctx, serverName, serverIPv4, port)
 		if err != nil {
 			result.FailureCount++
 			result.FailureServers = append(result.FailureServers, fmt.Sprintf("row:%d name:%s - %v", i, serverName, err))

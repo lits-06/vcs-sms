@@ -38,7 +38,7 @@ func (s *server) Run() error {
 
 	tracer, closer, err := tracing.NewJaegerTracer(s.cfg.Jaeger)
 	if err != nil {
-		s.log.Error("Failed to create Jaeger tracer", "error", err)
+		s.log.Error("Failed to create Jaeger tracer ", "error: ", err)
 		return err
 	}
 	defer closer.Close()
@@ -46,13 +46,13 @@ func (s *server) Run() error {
 
 	pgDB, err := postgres.NewPostgresDB(s.cfg.Postgres)
 	if err != nil {
-		s.log.Error("Failed to connect to Postgres", "error", err)
+		s.log.Error("Failed to connect to Postgres ", "error: ", err)
 		return err
 	}
 
 	err = pgDB.AutoMigrate(&domain.Server{})
 	if err != nil {
-		s.log.Error("Failed to auto migrate Postgres", "error", err)
+		s.log.Error("Failed to auto migrate Postgres ", "error: ", err)
 		return err
 	}
 
@@ -74,11 +74,11 @@ func (s *server) Run() error {
 
 	go func() {
 		if err := router.Run(s.cfg.Port); err != nil {
-			s.log.Error("Failed to run server service on HTTP server", "error", err)
+			s.log.Error("Failed to run server service on HTTP server ", "error: ", err)
 			cancel()
 		}
 	}()
-	s.log.Info("Server service is running", "http_port", s.cfg.Port)
+	s.log.Info("Server service is running ", "http_port: ", s.cfg.Port)
 
 	<-ctx.Done()
 	s.log.Info("Shutting down server service...")

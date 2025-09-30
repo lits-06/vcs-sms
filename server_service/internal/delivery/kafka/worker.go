@@ -30,8 +30,8 @@ func (cg *ConsumerGroup) updateWorker(
 	for {
 		m, err := r.FetchMessage(ctx)
 		if err != nil {
-			cg.log.Error("r.FetchMessage: %v", err)
-			return
+			cg.log.Warnf("r.FetchMessage: %v", err)
+			continue
 		}
 
 		cg.log.Infof(
@@ -46,7 +46,7 @@ func (cg *ConsumerGroup) updateWorker(
 
 		var server domain.Server
 		if err := json.Unmarshal(m.Value, &server); err != nil {
-			cg.log.Error("json.Unmarshal: %v", err)
+			cg.log.Errorf("json.Unmarshal: %v", err)
 			continue
 		}
 
@@ -62,16 +62,16 @@ func (cg *ConsumerGroup) updateWorker(
 			retry.Delay(retryDelay),
 			retry.Context(ctx),
 		); err != nil {
-			// if err := cg.publishErrorMessage(ctx, w, m, err); err != nil {
-			// 	cg.log.Error("cg.publishErrorMessage: %v", err)
-			// 	continue
-			// }
-			cg.log.Error("cg.serverUC.UpdateServerStatus: %v", err)
+			if err := cg.publishErrorMessage(ctx, w, m, err); err != nil {
+				cg.log.Warnf("cg.publishErrorMessage: %v", err)
+				continue
+			}
+			cg.log.Warnf("cg.serverUC.UpdateServerStatus: %v", err)
 			continue
 		}
 
 		if err := r.CommitMessages(ctx, m); err != nil {
-			cg.log.Error("r.CommitMessages: %v", err)
+			cg.log.Warnf("r.CommitMessages: %v", err)
 			continue
 		}
 	}

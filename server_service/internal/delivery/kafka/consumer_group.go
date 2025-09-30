@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/lits-06/vcs-sms/pkg/logger"
@@ -71,14 +72,14 @@ func (cg *ConsumerGroup) consumeUpdateServerStatus(
 	defer cancel()
 	defer func() {
 		if err := r.Close(); err != nil {
-			cg.log.Error("r.Close: %v", err)
+			cg.log.Errorf("r.Close: %v", err)
 		}
 	}()
 
 	w := cg.getNewKafkaWriter(deadLetterQueueTopic)
 	defer func() {
 		if err := w.Close(); err != nil {
-			cg.log.Error("w.Close: %v", err)
+			cg.log.Errorf("w.Close: %v", err)
 			cancel()
 		}
 	}()
@@ -90,6 +91,28 @@ func (cg *ConsumerGroup) consumeUpdateServerStatus(
 		go cg.updateWorker(ctx, cancel, wg, r, w, i)
 	}
 	wg.Wait()
+}
+
+func (cg *ConsumerGroup) publishErrorMessage(ctx context.Context, w *kafka.Writer, m kafka.Message, err error) error {
+	errMsg := &domain.ErrorMessage{
+		Offset:    m.Offset,
+		Error:     err.Error(),
+		Time:      m.Time.UTC(),
+		Partition: m.Partition,
+		Topic:     m.Topic,
+	}
+
+	cg.log.Debugf("Publishing error message: %v", errMsg)
+
+	errMsgBytes, err := json.Marshal(errMsg)
+	if err != nil {
+		cg.log.Errorf("json.Marshal: %v", err)
+		return err
+	}
+
+	return w.WriteMessages(ctx, kafka.Message{
+		Value: errMsgBytes,
+	})
 }
 
 func (cg *ConsumerGroup) RunConsumers(ctx context.Context, cancel context.CancelFunc) {

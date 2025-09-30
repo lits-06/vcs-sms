@@ -5,7 +5,7 @@ import "time"
 const (
 	minBytes               = 10e3 // 10KB
 	maxBytes               = 10e6 // 10MB
-	queueCapacity          = 100
+	queueCapacity          = 1000
 	heartbeatInterval      = 3 * time.Second
 	commitInterval         = 0
 	partitionWatchInterval = 5 * time.Second
@@ -18,7 +18,7 @@ const (
 	writerMaxAttempts  = 3
 
 	updateTopic       = "server-update"
-	updateGroupID     = "update_group"
+	updateGroupID     = "update_group_server_service"
 	updateWorkerCount = 3
 
 	deadLetterQueueTopic = "dead-letter-queue"

@@ -15,18 +15,10 @@ definitions:
         maximum: 65535
         minimum: 1
         type: integer
-      status:
-        description: Server status
-        enum:
-        - "ON"
-        - "OFF"
-        example: "ON"
-        type: string
     required:
     - ipv4
     - name
     - port
-    - status
     type: object
   github_com_lits-06_vcs-sms_server_service_internal_dto.UpdateServerRequest:
     properties:
