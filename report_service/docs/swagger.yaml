@@ -2,10 +2,13 @@ definitions:
   github_com_lits-06_vcs-sms_report_service_internal_dto.UptimeRequest:
     properties:
       email:
+        example: admin@example.com
         type: string
       end_date:
+        example: "2025-01-31T23:59:59Z"
         type: string
       start_date:
+        example: "2025-01-01T00:00:00Z"
         type: string
     required:
     - email

@@ -109,13 +109,16 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "admin@example.com"
                 },
                 "end_date": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2025-01-31T23:59:59Z"
                 },
                 "start_date": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "2025-01-01T00:00:00Z"
                 }
             }
         },

@@ -37,7 +37,7 @@ func (s *server) Run() error {
 
 	tracer, closer, err := tracing.NewJaegerTracer(s.cfg.Jaeger)
 	if err != nil {
-		s.log.Error("Failed to create Jaeger tracer", "error", err)
+		s.log.Error("Failed to create Jaeger tracer ", "error: ", err)
 		return err
 	}
 	defer closer.Close()
@@ -47,23 +47,23 @@ func (s *server) Run() error {
 		Addresses: []string{s.cfg.Elasticsearch.Address},
 	})
 	if err != nil {
-		s.log.Error("Failed to create Elasticsearch client", "error", err)
+		s.log.Error("Failed to create Elasticsearch client ", "error: ", err)
 		return err
 	}
 
 	esInfoRes, err := esClient.Info(esClient.Info.WithContext(ctx))
 	if err != nil {
-		s.log.Error("Failed to get Elasticsearch info", "error", err)
+		s.log.Error("Failed to get Elasticsearch info ", "error: ", err)
 		return err
 	}
 	if esInfoRes.IsError() {
-		s.log.Error("Elasticsearch info response is error", "error", esInfoRes.String())
+		s.log.Error("Elasticsearch info response is error ", "error: ", esInfoRes.String())
 		return err
 	}
 
 	recordRepo := repository.NewRecordRepository(esClient, s.cfg)
 	reportUsecase := usecase.NewReportUseCase(recordRepo, s.cfg)
-	
+
 	middleware := middleware.NewAuthMiddleware(s.cfg.JWT.SecretKey)
 	reportHandler := http.NewReportHandler(s.log, reportUsecase, middleware)
 
@@ -77,7 +77,7 @@ func (s *server) Run() error {
 			case <-ticker.C:
 				err := reportUsecase.ReportStats(ctx, "", time.Now().Add(-s.cfg.Duration), time.Now())
 				if err != nil {
-					s.log.Error("Failed to generate and send reports", "error", err)
+					s.log.Error("Failed to generate and send reports ", "error: ", err)
 				} else {
 					s.log.Info("Successfully generated and sent reports")
 				}
@@ -90,11 +90,11 @@ func (s *server) Run() error {
 
 	go func() {
 		if err := router.Run(s.cfg.Port); err != nil {
-			s.log.Error("Failed to run report service on HTTP server", "error", err)
+			s.log.Error("Failed to run report service on HTTP server ", "error: ", err)
 			cancel()
 		}
 	}()
-	s.log.Info("Report service is running", "http_port", s.cfg.Port)
+	s.log.Info("Report service is running ", "http_port: ", s.cfg.Port)
 
 	<-ctx.Done()
 	s.log.Info("Shutting down report service...")
