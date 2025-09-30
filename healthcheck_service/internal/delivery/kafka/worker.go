@@ -30,11 +30,11 @@ func (cg *ConsumerGroup) createWorker(
 	for {
 		m, err := r.FetchMessage(ctx)
 		if err != nil {
-			cg.log.Error("r.FetchMessage: %v", err)
-			return
+			cg.log.Warnf("r.FetchMessage: %v", err)
+			continue
 		}
 
-		cg.log.Infof(
+		cg.log.Debugf(
 			"WORKER: %v, message at topic/partition/offset %v/%v/%v: %s = %s\n",
 			workerID,
 			m.Topic,
@@ -46,7 +46,7 @@ func (cg *ConsumerGroup) createWorker(
 
 		var server domain.Server
 		if err := json.Unmarshal(m.Value, &server); err != nil {
-			cg.log.Error("json.Unmarshal: %v", err)
+			cg.log.Errorf("json.Unmarshal: %v", err)
 			continue
 		}
 
@@ -67,15 +67,15 @@ func (cg *ConsumerGroup) createWorker(
 			retry.Context(ctx),
 		); err != nil {
 			if err := cg.publishErrorMessage(ctx, w, m, err); err != nil {
-				cg.log.Error("cg.publishErrorMessage: %v", err)
+				cg.log.Warnf("cg.publishErrorMessage: %v", err)
 				continue
 			}
-			cg.log.Error("cg.healthCheckUC.IndexServerState: %v", err)
+			cg.log.Warnf("cg.healthCheckUC.IndexServerState: %v", err)
 			continue
 		}
 
 		if err := r.CommitMessages(ctx, m); err != nil {
-			cg.log.Error("r.CommitMessages: %v", err)
+			cg.log.Warnf("r.CommitMessages: %v", err)
 			continue
 		}
 	}
@@ -95,8 +95,8 @@ func (cg *ConsumerGroup) deleteWorker(
 	for {
 		m, err := r.FetchMessage(ctx)
 		if err != nil {
-			cg.log.Error("r.FetchMessage: %v", err)
-			return
+			cg.log.Warnf("r.FetchMessage: %v", err)
+			continue
 		}
 
 		cg.log.Infof(
@@ -111,7 +111,7 @@ func (cg *ConsumerGroup) deleteWorker(
 
 		var serverID string
 		if err := json.Unmarshal(m.Value, &serverID); err != nil {
-			cg.log.Error("json.Unmarshal: %v", err)
+			cg.log.Errorf("json.Unmarshal: %v", err)
 			continue
 		}
 
@@ -128,15 +128,76 @@ func (cg *ConsumerGroup) deleteWorker(
 			retry.Context(ctx),
 		); err != nil {
 			if err := cg.publishErrorMessage(ctx, w, m, err); err != nil {
-				cg.log.Error("cg.publishErrorMessage: %v", err)
+				cg.log.Warnf("cg.publishErrorMessage: %v", err)
 				continue
 			}
-			cg.log.Error("cg.healthCheckUC.DeleteServerSnapshot: %v", err)
+			cg.log.Warnf("cg.healthCheckUC.DeleteServerSnapshot: %v", err)
 			continue
 		}
 
 		if err := r.CommitMessages(ctx, m); err != nil {
-			cg.log.Error("r.CommitMessages: %v", err)
+			cg.log.Warnf("r.CommitMessages: %v", err)
+			continue
+		}
+	}
+}
+
+func (cg *ConsumerGroup) updateWorker(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	wg *sync.WaitGroup,
+	r *kafka.Reader,
+	w *kafka.Writer,
+	workerID int,
+) {
+	defer wg.Done()
+	defer cancel()
+
+	for {
+		m, err := r.FetchMessage(ctx)
+		if err != nil {
+			cg.log.Warnf("r.FetchMessage: %v", err)
+			continue
+		}
+
+		cg.log.Infof(
+			"WORKER: %v, message at topic/partition/offset %v/%v/%v: %s = %s\n",
+			workerID,
+			m.Topic,
+			m.Partition,
+			m.Offset,
+			string(m.Key),
+			string(m.Value),
+		)
+
+		var server domain.Server
+		if err := json.Unmarshal(m.Value, &server); err != nil {
+			cg.log.Errorf("json.Unmarshal: %v", err)
+			continue
+		}
+
+		if err := retry.Do(func() error {
+			err := cg.healthCheckUC.IndexServerState(ctx, &server)
+			if err != nil {
+				return err
+			}
+			cg.log.Infof("Indexed server state: %v", server)
+			return nil
+		},
+			retry.Attempts(retryAttempts),
+			retry.Delay(retryDelay),
+			retry.Context(ctx),
+		); err != nil {
+			if err := cg.publishErrorMessage(ctx, w, m, err); err != nil {
+				cg.log.Warnf("cg.publishErrorMessage: %v", err)
+				continue
+			}
+			cg.log.Warnf("cg.healthCheckUC.IndexServerState: %v", err)
+			continue
+		}
+
+		if err := r.CommitMessages(ctx, m); err != nil {
+			cg.log.Warnf("r.CommitMessages: %v", err)
 			continue
 		}
 	}

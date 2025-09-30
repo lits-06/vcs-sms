@@ -56,7 +56,7 @@ func (p *Producer) Close() {
 func (p *Producer) PublishStateChange(ctx context.Context, server *domain.Server) error {
 	data, err := json.Marshal(server)
 	if err != nil {
-		p.log.Error("json.Marshal: %v", err)
+		p.log.Errorf("json.Marshal: %v", err)
 		return err
 	}
 
@@ -64,6 +64,8 @@ func (p *Producer) PublishStateChange(ctx context.Context, server *domain.Server
 		Key:   []byte(server.ServerID),
 		Value: data,
 	}
+
+	p.log.Debugf("Producing message to topic %s: %s", p.writer.Topic, string(data))
 
 	return p.writer.WriteMessages(ctx, msg)
 }

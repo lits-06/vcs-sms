@@ -38,7 +38,7 @@ func (h *healthCheckUseCase) StartHealthCheckScheduler(ctx context.Context) {
 		case <-h.ticker.C:
 			servers, err := h.getAllServersSnapshot(ctx)
 			if err != nil {
-				h.log.Error("getAllServer: %v", err)
+				h.log.Errorf("getAllServer: %v", err)
 				continue
 			}
 
@@ -65,7 +65,7 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]
 			defer wg.Done()
 			snapshot, err := h.checkServerHealth(server)
 			if err != nil {
-				h.log.Error("checkServerHealth: %v", err)
+				h.log.Errorf("checkServerHealth: %v", err)
 				return
 			}
 
@@ -78,7 +78,7 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]
 				}
 				err = h.publisher.PublishStateChange(ctx, &state)
 				if err != nil {
-					h.log.Error("PublishStateChange: %v", err)
+					h.log.Errorf("PublishStateChange: %v", err)
 					return
 				}
 			}
@@ -92,23 +92,23 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]
 func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) (*[]domain.Server, error) {
 	servers, err := h.cacheRepo.GetAllServersSnapshot(ctx)
 	if err == nil && len(*servers) > 0 {
-		h.log.Debug("Retrieved %d servers from cache", len(*servers))
+		h.log.Debugf("Retrieved %d servers from cache", len(*servers))
 		return servers, nil
 	}
 
 	if err != nil {
-		h.log.Debug("Cache miss for servers: %v", err)
+		h.log.Debugf("Cache miss for servers: %v", err)
 	}
 
 	servers, err = h.repo.GetAllServersSnapshot(ctx)
 	if err != nil {
-		h.log.Error("repo.GetAllServersSnapshot: %v", err)
+		h.log.Errorf("repo.GetAllServersSnapshot: %v", err)
 		return nil, fmt.Errorf("repo.GetAllServersSnapshot: %w", err)
 	}
 
 	if len(*servers) > 0 {
 		if err = h.cacheRepo.SetAllServersSnapshot(ctx, servers); err != nil {
-			h.log.Warn("cacheRepo.SetAllServersSnapshot: %v", err)
+			h.log.Warnf("cacheRepo.SetAllServersSnapshot: %v", err)
 		}
 	}
 
@@ -117,12 +117,12 @@ func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) (*[]doma
 }
 
 func (h *healthCheckUseCase) checkServerHealth(server *domain.Server) (*domain.Server, error) {
-	addr := fmt.Sprintf("localhost:%d/health", server.Port)
+	addr := fmt.Sprintf("http://host.docker.internal:%d/health", server.Port)
 	start := time.Now()
 	resp, err := http.Get(addr)
 	responseTime := time.Since(start)
 	if err != nil {
-		h.log.Debug("Failed to ping id:%s port:%d (took %v): %v", server.ServerID, server.Port, responseTime, err)
+		h.log.Debugf("Failed to ping id:%s port:%d (took %v): %v", server.ServerID, server.Port, responseTime, err)
 		return &domain.Server{
 			ServerID: server.ServerID,
 			Port:     server.Port,
@@ -132,8 +132,6 @@ func (h *healthCheckUseCase) checkServerHealth(server *domain.Server) (*domain.S
 
 	defer resp.Body.Close()
 
-	h.log.Debugf("resp: %+v", resp)
-	
 	if resp.StatusCode != http.StatusOK {
 		return &domain.Server{
 			ServerID: server.ServerID,
@@ -152,19 +150,19 @@ func (h *healthCheckUseCase) checkServerHealth(server *domain.Server) (*domain.S
 func (h *healthCheckUseCase) IndexServerState(ctx context.Context, server *domain.Server) error {
 	err := h.repo.IndexServerState(ctx, server)
 	if err != nil {
-		h.log.Error("repo.IndexServerState: %v", err)
+		h.log.Errorf("repo.IndexServerState: %v", err)
 		return err
 	}
 
 	err = h.repo.SaveServerSnapshot(ctx, server)
 	if err != nil {
-		h.log.Error("repo.SaveServerSnapshot: %v", err)
+		h.log.Errorf("repo.SaveServerSnapshot: %v", err)
 		return err
 	}
 
 	err = h.cacheRepo.SaveServerSnapshot(ctx, server)
 	if err != nil {
-		h.log.Error("cacheRepo.SaveServerSnapshot: %v", err)
+		h.log.Errorf("cacheRepo.SaveServerSnapshot: %v", err)
 		return err
 	}
 
@@ -174,13 +172,13 @@ func (h *healthCheckUseCase) IndexServerState(ctx context.Context, server *domai
 func (h *healthCheckUseCase) DeleteServerSnapshot(ctx context.Context, serverID string) error {
 	err := h.repo.DeleteServerSnapshot(ctx, serverID)
 	if err != nil {
-		h.log.Error("repo.DeleteServerSnapshot: %v", err)
+		h.log.Errorf("repo.DeleteServerSnapshot: %v", err)
 		return err
 	}
 
 	err = h.cacheRepo.DeleteServerSnapshot(ctx, serverID)
 	if err != nil {
-		h.log.Error("cacheRepo.DeleteServerSnapshot: %v", err)
+		h.log.Errorf("cacheRepo.DeleteServerSnapshot: %v", err)
 		return err
 	}
 

@@ -36,7 +36,7 @@ func (s *server) Run() error {
 
 	tracer, closer, err := tracing.NewJaegerTracer(s.cfg.Jaeger)
 	if err != nil {
-		s.log.Error("Failed to create Jaeger tracer", "error", err)
+		s.log.Error("Failed to create Jaeger tracer ", "error: ", err)
 		return err
 	}
 	defer closer.Close()
@@ -46,24 +46,24 @@ func (s *server) Run() error {
 		Addresses: []string{s.cfg.Elasticsearch.Address},
 	})
 	if err != nil {
-		s.log.Error("Failed to create Elasticsearch client", "error", err)
+		s.log.Error("Failed to create Elasticsearch client ", "error: ", err)
 		return err
 	}
 
 	esInfoRes, err := esClient.Info(esClient.Info.WithContext(ctx))
 	if err != nil {
-		s.log.Error("Failed to get Elasticsearch info", "error", err)
+		s.log.Error("Failed to get Elasticsearch info ", "error: ", err)
 		return err
 	}
 	if esInfoRes.IsError() {
-		s.log.Error("Elasticsearch info response is error", "error", esInfoRes.String())
+		s.log.Error("Elasticsearch info response is error ", "error: ", esInfoRes.String())
 		return err
 	}
 
 	redisUniversalClient := redispkg.NewUniversalRedisClient(&s.cfg.Redis.Config)
 	_, err = redisUniversalClient.Ping(ctx).Result()
 	if err != nil {
-		s.log.Error("Failed to connect to Redis", "error", err)
+		s.log.Error("Failed to connect to Redis ", "error: ", err)
 		return err
 	}
 	redisClient, ok := redisUniversalClient.(*redis.Client)

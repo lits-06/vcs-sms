@@ -75,14 +75,14 @@ func (cg *ConsumerGroup) consumerCreateServer(
 	defer cancel()
 	defer func() {
 		if err := r.Close(); err != nil {
-			cg.log.Error("r.Close: %v", err)
+			cg.log.Errorf("r.Close: %v", err)
 		}
 	}()
 
 	w := cg.getNewKafkaWriter(deadLetterQueueTopic)
 	defer func() {
 		if err := w.Close(); err != nil {
-			cg.log.Error("w.Close: %v", err)
+			cg.log.Errorf("w.Close: %v", err)
 			cancel()
 		}
 	}()
@@ -107,14 +107,14 @@ func (cg *ConsumerGroup) consumeDeleteServer(
 	defer cancel()
 	defer func() {
 		if err := r.Close(); err != nil {
-			cg.log.Error("r.Close: %v", err)
+			cg.log.Errorf("r.Close: %v", err)
 		}
 	}()
 
 	w := cg.getNewKafkaWriter(deadLetterQueueTopic)
 	defer func() {
 		if err := w.Close(); err != nil {
-			cg.log.Error("w.Close: %v", err)
+			cg.log.Errorf("w.Close: %v", err)
 			cancel()
 		}
 	}()
@@ -128,6 +128,38 @@ func (cg *ConsumerGroup) consumeDeleteServer(
 	wg.Wait()
 }
 
+func (cg *ConsumerGroup) consumeUpdateServerState(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	groupID string,
+	topic string,
+	workerNum int,
+) {
+	r := cg.getNewKafkaReader(cg.Brokers, topic, groupID)
+	defer cancel()
+	defer func() {
+		if err := r.Close(); err != nil {
+			cg.log.Errorf("r.Close: %v", err)
+		}
+	}()
+
+	w := cg.getNewKafkaWriter(deadLetterQueueTopic)
+	defer func() {
+		if err := w.Close(); err != nil {
+			cg.log.Errorf("w.Close: %v", err)
+			cancel()
+		}
+	}()
+
+	cg.log.Infof("Starting consumer group: %v", r.Config().GroupID)
+	wg := &sync.WaitGroup{}
+	for i := 0; i < workerNum; i++ {
+		wg.Add(1)
+		go cg.updateWorker(ctx, cancel, wg, r, w, i)
+	}
+	wg.Wait()
+}
+
 func (cg *ConsumerGroup) publishErrorMessage(ctx context.Context, w *kafka.Writer, m kafka.Message, err error) error {
 	errMsg := &domain.ErrorMessage{
 		Offset:    m.Offset,
@@ -137,8 +169,11 @@ func (cg *ConsumerGroup) publishErrorMessage(ctx context.Context, w *kafka.Write
 		Topic:     m.Topic,
 	}
 
+	cg.log.Debugf("Publishing error message: %v", errMsg)
+
 	errMsgBytes, err := json.Marshal(errMsg)
 	if err != nil {
+		cg.log.Errorf("json.Marshal: %v", err)
 		return err
 	}
 
@@ -148,7 +183,7 @@ func (cg *ConsumerGroup) publishErrorMessage(ctx context.Context, w *kafka.Write
 }
 
 func (cg *ConsumerGroup) RunConsumers(ctx context.Context, cancel context.CancelFunc) {
-	// go cg.consumeIndexServerState(ctx, cancel, stateGroupID, stateTopic, stateWorkerCount)
 	go cg.consumerCreateServer(ctx, cancel, createGroupID, createTopic, createWorkerCount)
 	go cg.consumeDeleteServer(ctx, cancel, deleteGroupID, deleteTopic, deleteWorkerCount)
+	go cg.consumeUpdateServerState(ctx, cancel, updateGroupID, updateTopic, updateWorkerCount)
 }
