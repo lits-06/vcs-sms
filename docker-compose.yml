@@ -149,7 +149,7 @@ services:
       - "50001:50001" # gRPC port
     volumes:
       - ./user_service/config/config.yaml:/app/user_service/config/config.yaml
-      - ./logs/user_service.log:/app/logs/user_service.log
+      - ./logs:/app/logs
     networks:
       - sms-network
     labels:
@@ -168,7 +168,7 @@ services:
       - jaeger
     volumes:
       - ./auth_service/config/config.yaml:/app/auth_service/config/config.yaml
-      - ./logs/auth_service.log:/app/logs/auth_service.log
+      - ./logs:/app/logs
     networks:
       - sms-network
     labels:
@@ -188,7 +188,7 @@ services:
       - jaeger
     volumes:
       - ./server_service/config/config.yaml:/app/server_service/config/config.yaml
-      - ./logs/server_service.log:/app/logs/server_service.log
+      - ./logs:/app/logs
     networks:
       - sms-network
     labels:
@@ -208,7 +208,7 @@ services:
     volumes:
       - ./report_service/config/config.yaml:/app/report_service/config/config.yaml
       - ./report_service/internal/templates/:/app/report_service/internal/templates/
-      - ./logs/report_service.log:/app/logs/report_service.log
+      - ./logs:/app/logs
     networks:
       - sms-network
     labels:
@@ -229,9 +229,11 @@ services:
       - jaeger
     volumes:
       - ./healthcheck_service/config/config.yaml:/app/healthcheck_service/config/config.yaml
-      - ./logs/healthcheck_service.log:/app/logs/healthcheck_service.log
+      - ./logs:/app/logs
     networks:
       - sms-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     # No Traefik labels as this is a background service
 
 networks:

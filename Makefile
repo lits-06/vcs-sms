@@ -285,7 +285,15 @@ init: kafka-create-topics elasticsearch-create-indices ## Initialize Kafka topic
 	@echo "$(GREEN)✅ Initialization complete!$(NC)"
 
 clear-snapshotidx: ## Clear all documents in snapshotidx
-	curl -X POST "$(ELASTIC_URL)/$(SNAPSHOT_INDEX)/_delete_by_query" -H 'Content-Type: application/json' -d '{"query": {"match_all": {}}}'
+	curl -X POST "$(ELASTIC_URL)/$(SNAPSHOT_INDEX)/_delete_by_query" \
+	-H 'Content-Type: application/json' \
+	-d '{"query": {"match_all": {}}}'
 
+clear-snapshot-redis: ## Clear all keys snapshotKey:* in Redis
+	docker exec -i sms_redis redis-cli --scan --pattern "snapshotKey:*" | xargs -r docker exec -i sms_redis redis-cli del
 
+clear-postgres-servers:
+	docker exec -i sms_postgres psql -U dev_user -d sms_db -c "TRUNCATE TABLE servers CASCADE;"
+
+clear-all-servers: clear-snapshotidx clear-snapshot-redis clear-postgres-servers
 
