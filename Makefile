@@ -133,9 +133,9 @@ kafka-list-topics: ## List all Kafka topics
 kafka-create-topics: ## Create all required Kafka topics
 	@echo "$(GREEN)Creating all required Kafka topics...$(NC)"
 	@echo "$(YELLOW)Creating server-create topic...$(NC)"
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-create --partitions 3 --replication-factor 1 --if-not-exists
+	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-create --partitions 5 --replication-factor 1 --if-not-exists
 	@echo "$(YELLOW)Creating server-update topic...$(NC)"
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-update --partitions 3 --replication-factor 1 --if-not-exists
+	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-update --partitions 5 --replication-factor 1 --if-not-exists
 	@echo "$(YELLOW)Creating server-delete topic...$(NC)"
 	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-delete --partitions 1 --replication-factor 1 --if-not-exists
 	@echo "$(YELLOW)Creating dead-letter-queue topic...$(NC)"
@@ -297,3 +297,21 @@ clear-postgres-servers:
 
 clear-all-servers: clear-snapshotidx clear-snapshot-redis clear-postgres-servers
 
+list-ports:
+	lsof -i -P | awk 'NR>1 {split($$9,a,":");print a[length(a)]}' | sort -n | uniq
+
+init-swarm: ## Initialize Docker Swarm (if not already initialized)
+	@docker info | grep "Swarm: active" > /dev/null || docker swarm init
+
+deploy: init-swarm ## Deploy stack using Docker Swarm
+	docker stack deploy -c docker-compose.yml sms_stack
+
+stop:
+	docker swarm leave --force
+
+build-images: ## Build Docker images for all services
+	docker build -t vcs-sms-user_service:latest -f ./user_service/Dockerfile .
+	docker build -t vcs-sms-auth_service:latest -f ./auth_service/Dockerfile .
+	docker build -t vcs-sms-server_service:latest -f ./server_service/Dockerfile .
+	docker build -t vcs-sms-report_service:latest -f ./report_service/Dockerfile .
+	docker build -t vcs-sms-healthcheck_service:latest -f ./healthcheck_service/Dockerfile .
