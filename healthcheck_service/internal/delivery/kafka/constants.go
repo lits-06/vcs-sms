@@ -5,6 +5,8 @@ import "time"
 const (
 	minBytes               = 10e3 // 10KB
 	maxBytes               = 10e6 // 10MB
+	maxWait                = 1 * time.Second
+	readBatchTimeout       = 500 * time.Millisecond
 	queueCapacity          = 1000
 	heartbeatInterval      = 3 * time.Second
 	commitInterval         = 0
@@ -12,18 +14,18 @@ const (
 	maxAttempts            = 3
 	dialTimeout            = 3 * time.Minute
 
-	writerReadTimeout  = 10 * time.Second
-	writerWriteTimeout = 10 * time.Second
+	writerReadTimeout  = 5 * time.Second
+	writerWriteTimeout = 5 * time.Second
 	writerRequiredAcks = -1
 	writerMaxAttempts  = 3
 
 	updateTopic       = "server-update"
 	updateGroupID     = "update_group_healthcheck_service"
-	updateWorkerCount = 3
+	updateWorkerCount = 5
 
 	createTopic       = "server-create"
 	createGroupID     = "create_group_healthcheck_service"
-	createWorkerCount = 3
+	createWorkerCount = 5
 
 	deleteTopic       = "server-delete"
 	deleteGroupID     = "delete_group_healthcheck_service"

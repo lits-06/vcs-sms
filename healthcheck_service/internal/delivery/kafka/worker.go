@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -149,6 +150,7 @@ func (cg *ConsumerGroup) updateWorker(
 	r *kafka.Reader,
 	w *kafka.Writer,
 	workerID int,
+	counter *uint64,
 ) {
 	defer wg.Done()
 	defer cancel()
@@ -159,6 +161,8 @@ func (cg *ConsumerGroup) updateWorker(
 			cg.log.Warnf("r.FetchMessage: %v", err)
 			continue
 		}
+
+		atomic.AddUint64(counter, 1)
 
 		cg.log.Infof(
 			"WORKER: %v, message at topic/partition/offset %v/%v/%v: %s = %s\n",

@@ -32,6 +32,7 @@ func (cg *ConsumerGroup) getNewKafkaReader(kafkaURL []string, topic, groupID str
 		GroupID:                groupID,
 		MinBytes:               minBytes,
 		MaxBytes:               maxBytes,
+		MaxWait:                maxWait,
 		QueueCapacity:          queueCapacity,
 		HeartbeatInterval:      heartbeatInterval,
 		CommitInterval:         commitInterval,

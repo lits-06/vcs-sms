@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/lits-06/vcs-sms/healthcheck_service/config"
 	"github.com/lits-06/vcs-sms/healthcheck_service/internal/domain"
@@ -35,6 +37,7 @@ func (cg *ConsumerGroup) getNewKafkaReader(kafkaURL []string, topic, groupID str
 		GroupID:                groupID,
 		MinBytes:               minBytes,
 		MaxBytes:               maxBytes,
+		MaxWait:                maxWait,
 		QueueCapacity:          queueCapacity,
 		HeartbeatInterval:      heartbeatInterval,
 		CommitInterval:         commitInterval,
@@ -152,12 +155,32 @@ func (cg *ConsumerGroup) consumeUpdateServerState(
 	}()
 
 	cg.log.Infof("Starting consumer group: %v", r.Config().GroupID)
+
+	var msgCount uint64
+
+	go cg.logMessageCounter(ctx, &msgCount)
+
 	wg := &sync.WaitGroup{}
 	for i := 0; i < workerNum; i++ {
 		wg.Add(1)
-		go cg.updateWorker(ctx, cancel, wg, r, w, i)
+		go cg.updateWorker(ctx, cancel, wg, r, w, i, &msgCount)
 	}
 	wg.Wait()
+}
+
+func (cg *ConsumerGroup) logMessageCounter(ctx context.Context, counter *uint64) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			count := atomic.LoadUint64(counter)
+			cg.log.Infof("[TEST] Total messages processed: %d", count)
+		}
+	}
 }
 
 func (cg *ConsumerGroup) publishErrorMessage(ctx context.Context, w *kafka.Writer, m kafka.Message, err error) error {
