@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 
@@ -13,8 +14,8 @@ import (
 )
 
 const (
-	startPort = 10000
-	endPort   = 19999
+	startPort = 20000
+	endPort   = 29999
 	outFile   = "fake_servers.xlsx"
 )
 
@@ -76,6 +77,13 @@ func main() {
 				}
 			}()
 		}(p)
+	}
+
+	// Xóa file cũ nếu tồn tại
+	if _, err := os.Stat(outFile); err == nil {
+		if err := os.Remove(outFile); err != nil {
+			log.Printf("Can not remove old file: %v", err)
+		}
 	}
 
 	if err := f.SaveAs(outFile); err != nil {

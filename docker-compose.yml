@@ -6,26 +6,37 @@ services:
     command:
       - "--api.dashboard=true"
       - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
+      - "--providers.swarm.endpoint=unix:///var/run/docker.sock"
+      - "--providers.swarm.watch=true"
+      - "--providers.swarm.exposedbydefault=false"
+      - "--providers.swarm.network=sms_stack_sms-network"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.dashboard.address=:8080"
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080" # Traefik dashboard
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - sms-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dashboard.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
-      - "traefik.http.routers.dashboard.service=api@internal"
     deploy:
-      mode: global
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+        - "traefik.http.routers.dashboard.service=api@internal"
+        - "traefik.http.routers.dashboard.entrypoints=web"
+        - "traefik.http.services.dashboard.loadbalancer.server.port=8080"
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -40,47 +51,60 @@ services:
       POSTGRES_PASSWORD: dev_password
       POSTGRES_DB: sms_db
     ports:
-      - "5432:5432"
+      - target: 5432
+        published: 5432
+        protocol: tcp
+        mode: host
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - sms-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        delay: 10s
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dev_user"]
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
-        delay: 10s
+      start_period: 10s
 
   redis:
     image: redis:8-alpine
     # container_name: sms_redis
     ports:
-      - "6379:6379"
+      - target: 6379
+        published: 6379
+        protocol: tcp
+        mode: host
     volumes:
       - redis_data:/data
     networks:
       - sms-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        delay: 10s
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
-        delay: 10s
+      start_period: 10s
 
   kafka:
     image: bitnami/kafka:latest
     # container_name: sms_kafka
     ports:
-      - "9092:9092"
+      - target: 9092
+        published: 9092
+        protocol: tcp
+        mode: host
     environment:
       KAFKA_KRAFT_MODE: "true"
       KAFKA_ENABLE_KRAFT: yes
@@ -91,11 +115,14 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_DELETE_TOPIC_ENABLE: "true"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
     volumes:
       - kafka_data:/bitnami/kafka
     networks:
       - sms-network
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -109,41 +136,51 @@ services:
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     ports:
-      - "9200:9200"
-      - "9300:9300"
+      - target: 9200
+        published: 9200
+        protocol: tcp
+        mode: host
+      - target: 9300
+        published: 9300
+        protocol: tcp
+        mode: host
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
       - sms-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+        delay: 10s
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      restart_policy:
-        condition: on-failure
-        max_attempts: 3
-        delay: 10s
+      start_period: 30s
 
   logstash:
     image: docker.elastic.co/logstash/logstash:9.1.4
     # container_name: sms_logstash
     ports:
-      - "5044:5044"
-      - "9600:9600"
+      - target: 5044
+        published: 5044
+        protocol: tcp
+        mode: host
+      - target: 9600
+        published: 9600
+        protocol: tcp
+        mode: host
     volumes:
       - ./logstash/pipeline:/usr/share/logstash/pipeline
     depends_on:
       - elasticsearch
     networks:
       - sms-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/pipelines || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -160,6 +197,7 @@ services:
     networks:
       - sms-network
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -169,7 +207,10 @@ services:
     image: docker.elastic.co/kibana/kibana:9.1.4
     # container_name: sms_kibana
     ports:
-      - "5601:5601"
+      - target: 5601
+        published: 5601
+        protocol: tcp
+        mode: host
     environment:
       ELASTICSEARCH_HOSTS: "http://elasticsearch:9200"
     depends_on:
@@ -177,6 +218,7 @@ services:
     networks:
       - sms-network
     deploy:
+      replicas: 1
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -186,19 +228,35 @@ services:
     image: cr.jaegertracing.io/jaegertracing/jaeger:2.10.0
     # container_name: sms_jaeger
     ports:
-      - "16686:16686"
-      - "4317:4317"
-      - "4318:4318"
-      - "5778:5778"
-      - "9411:9411"
+      - target: 16686
+        published: 16686
+        protocol: tcp
+        mode: host
+      - target: 4317
+        published: 4317
+        protocol: tcp
+        mode: host
+      - target: 4318
+        published: 4318
+        protocol: tcp
+        mode: host
+      - target: 5778
+        published: 5778
+        protocol: tcp
+        mode: host
+      - target: 9411
+        published: 9411
+        protocol: tcp
+        mode: host
     networks:
       - sms-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.jaeger.rule=Host(`jaeger.localhost`)"
-      - "traefik.http.routers.jaeger.entrypoints=web"
-      - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
     deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.jaeger.rule=Host(`jaeger.localhost`)"
+        - "traefik.http.routers.jaeger.entrypoints=web"
+        - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -208,6 +266,10 @@ services:
   user_service:
     image: vcs-sms-user_service:latest
     # container_name: sms_user_service
+    entrypoint: ["/app/wait-for-service.sh"]
+    environment:
+      WAIT_FOR_SERVICES: "postgres:5432"
+      COMMAND: "./user"
     depends_on:
       - postgres
       - jaeger
@@ -216,14 +278,16 @@ services:
     volumes:
       - ./user_service/config/config.yaml:/app/user_service/config/config.yaml
       - ./logs:/app/logs
+      - ./wait-for-service.sh:/app/wait-for-service.sh
     networks:
       - sms-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.user-api.rule=Host(`user.localhost`)"
-      - "traefik.http.routers.user-api.entrypoints=web"
-      - "traefik.http.services.user-api.loadbalancer.server.port=8001"
     deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.user-api.rule=Host(`user.localhost`)"
+        - "traefik.http.routers.user-api.entrypoints=web"
+        - "traefik.http.services.user-api.loadbalancer.server.port=8001"
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -232,20 +296,26 @@ services:
   auth_service:
     image: vcs-sms-auth_service:latest
     # container_name: sms_auth_service
+    entrypoint: ["/app/wait-for-service.sh"]
+    environment:
+      WAIT_FOR_SERVICES: "redis:6379"
+      COMMAND: "./auth"
     depends_on:
       - redis
       - jaeger
     volumes:
       - ./auth_service/config/config.yaml:/app/auth_service/config/config.yaml
       - ./logs:/app/logs
+      - ./wait-for-service.sh:/app/wait-for-service.sh
     networks:
       - sms-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.auth-api.rule=Host(`auth.localhost`)"
-      - "traefik.http.routers.auth-api.entrypoints=web"
-      - "traefik.http.services.auth-api.loadbalancer.server.port=8003"
     deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.auth-api.rule=Host(`auth.localhost`)"
+        - "traefik.http.routers.auth-api.entrypoints=web"
+        - "traefik.http.services.auth-api.loadbalancer.server.port=8003"
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -254,6 +324,10 @@ services:
   server_service:
     image: vcs-sms-server_service:latest
     # container_name: sms_server_service
+    entrypoint: ["/app/wait-for-service.sh"]
+    environment:
+      WAIT_FOR_SERVICES: "postgres:5432 kafka:9092"
+      COMMAND: "./server"
     depends_on:
       - postgres
       - kafka
@@ -261,14 +335,16 @@ services:
     volumes:
       - ./server_service/config/config.yaml:/app/server_service/config/config.yaml
       - ./logs:/app/logs
+      - ./wait-for-service.sh:/app/wait-for-service.sh
     networks:
       - sms-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.server-api.rule=Host(`server.localhost`)"
-      - "traefik.http.routers.server-api.entrypoints=web"
-      - "traefik.http.services.server-api.loadbalancer.server.port=8000"
     deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.server-api.rule=Host(`server.localhost`)"
+        - "traefik.http.routers.server-api.entrypoints=web"
+        - "traefik.http.services.server-api.loadbalancer.server.port=8000"
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -277,6 +353,10 @@ services:
   report_service:
     image: vcs-sms-report_service:latest
     # container_name: sms_report_service
+    entrypoint: ["/app/wait-for-service.sh"]
+    environment:
+      WAIT_FOR_SERVICES: "elasticsearch:9200"
+      COMMAND: "./report"
     depends_on:
       - elasticsearch
       - jaeger
@@ -284,14 +364,16 @@ services:
       - ./report_service/config/config.yaml:/app/report_service/config/config.yaml
       - ./report_service/internal/templates/:/app/report_service/internal/templates/
       - ./logs:/app/logs
+      - ./wait-for-service.sh:/app/wait-for-service.sh
     networks:
       - sms-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.report-api.rule=Host(`report.localhost`)"
-      - "traefik.http.routers.report-api.entrypoints=web"
-      - "traefik.http.services.report-api.loadbalancer.server.port=8002"
     deploy:
+      replicas: 1
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.report-api.rule=Host(`report.localhost`)"
+        - "traefik.http.routers.report-api.entrypoints=web"
+        - "traefik.http.services.report-api.loadbalancer.server.port=8002"
       restart_policy:
         condition: on-failure
         max_attempts: 3
@@ -300,6 +382,10 @@ services:
   healthcheck_service:
     image: vcs-sms-healthcheck_service:latest
     # container_name: sms_healthcheck_service
+    entrypoint: ["/app/wait-for-service.sh"]
+    environment:
+      WAIT_FOR_SERVICES: "elasticsearch:9200 redis:6379 kafka:9092"
+      COMMAND: "./healthcheck"
     depends_on:
       - elasticsearch
       - redis
@@ -308,6 +394,7 @@ services:
     volumes:
       - ./healthcheck_service/config/config.yaml:/app/healthcheck_service/config/config.yaml
       - ./logs:/app/logs
+      - ./wait-for-service.sh:/app/wait-for-service.sh
     networks:
       - sms-network
     extra_hosts:

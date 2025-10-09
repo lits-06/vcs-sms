@@ -126,41 +126,67 @@ full-reset: ## Complete reset: stop, remove everything, rebuild, and start
 ## Kafka Commands
 kafka-topics: kafka-list-topics ## Alias for kafka-list-topics
 
-kafka-list-topics: ## List all Kafka topics
-	@echo "$(BLUE)Listing all Kafka topics...$(NC)"
-	docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --list
+kafka-list-topics: ## List all Kafka topics with detailed information
+	@echo "$(BLUE)Listing all Kafka topics with details...$(NC)"
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 kafka-create-topics: ## Create all required Kafka topics
 	@echo "$(GREEN)Creating all required Kafka topics...$(NC)"
-	@echo "$(YELLOW)Creating server-create topic...$(NC)"
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-create --partitions 5 --replication-factor 1 --if-not-exists
-	@echo "$(YELLOW)Creating server-update topic...$(NC)"
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-update --partitions 5 --replication-factor 1 --if-not-exists
-	@echo "$(YELLOW)Creating server-delete topic...$(NC)"
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-delete --partitions 1 --replication-factor 1 --if-not-exists
-	@echo "$(YELLOW)Creating dead-letter-queue topic...$(NC)"
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic dead-letter-queue --partitions 1 --replication-factor 1 --if-not-exists
-	@echo "$(GREEN)All topics created successfully!$(NC)"
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(YELLOW)Creating server-create topic...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-create --partitions 5 --replication-factor 1 --if-not-exists; \
+	echo "$(YELLOW)Creating server-update topic...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-update --partitions 5 --replication-factor 1 --if-not-exists; \
+	echo "$(YELLOW)Creating server-delete topic...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --create --topic server-delete --partitions 1 --replication-factor 1 --if-not-exists; \
+	echo "$(YELLOW)Creating dead-letter-queue topic...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --create --topic dead-letter-queue --partitions 1 --replication-factor 1 --if-not-exists; \
+	echo "$(GREEN)All topics created successfully!$(NC)"
 
 kafka-create-topic: ## Create a specific Kafka topic (usage: make kafka-create-topic TOPIC=topic_name PARTITIONS=3 REPLICATION=1)
 	@if [ -z "$(TOPIC)" ]; then \
 		echo "$(RED)Error: Please specify TOPIC name. Example: make kafka-create-topic TOPIC=my-topic$(NC)"; \
 		exit 1; \
 	fi
-	@PARTITIONS=$${PARTITIONS:-1}; \
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	PARTITIONS=$${PARTITIONS:-1}; \
 	REPLICATION=$${REPLICATION:-1}; \
 	echo "$(YELLOW)Creating topic: $(TOPIC) with $$PARTITIONS partitions and $$REPLICATION replication factor...$(NC)"; \
-	docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --create --topic $(TOPIC) --partitions $$PARTITIONS --replication-factor $$REPLICATION --if-not-exists
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --create --topic $(TOPIC) --partitions $$PARTITIONS --replication-factor $$REPLICATION --if-not-exists
 
 kafka-delete-topics: ## Delete all Kafka topics
 	@echo "$(RED)Deleting all Kafka topics...$(NC)"
 	@echo "$(YELLOW)Warning: This will delete ALL topics!$(NC)"
 	@read -p "Are you sure? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 1
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic server-create || true
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic server-update || true
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic server-delete || true
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic dead-letter-queue || true
-	@echo "$(GREEN)All topics deleted!$(NC)"
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	echo "$(YELLOW)Deleting server-create topic...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic server-create 2>&1 || true; \
+	echo "$(YELLOW)Deleting server-update topic...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic server-update 2>&1 || true; \
+	echo "$(YELLOW)Deleting server-delete topic...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic server-delete 2>&1 || true; \
+	echo "$(YELLOW)Deleting dead-letter-queue topic...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic dead-letter-queue 2>&1 || true; \
+	echo "$(GREEN)Topic deletion requested!$(NC)"; \
+	echo "$(BLUE)Verifying remaining topics...$(NC)"; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 kafka-delete-topic: ## Delete a specific Kafka topic (usage: make kafka-delete-topic TOPIC=topic_name)
 	@if [ -z "$(TOPIC)" ]; then \
@@ -169,11 +195,21 @@ kafka-delete-topic: ## Delete a specific Kafka topic (usage: make kafka-delete-t
 	fi
 	@echo "$(RED)Deleting topic: $(TOPIC)...$(NC)"
 	@read -p "Are you sure you want to delete topic $(TOPIC)? (y/N): " confirm && [ "$$confirm" = "y" ] || exit 1
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic $(TOPIC)
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic $(TOPIC)
 
 kafka-describe-topics: ## Describe all Kafka topics
 	@echo "$(BLUE)Describing all Kafka topics...$(NC)"
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --describe
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --describe
 
 kafka-describe-topic: ## Describe a specific Kafka topic (usage: make kafka-describe-topic TOPIC=topic_name)
 	@if [ -z "$(TOPIC)" ]; then \
@@ -181,7 +217,12 @@ kafka-describe-topic: ## Describe a specific Kafka topic (usage: make kafka-desc
 		exit 1; \
 	fi
 	@echo "$(BLUE)Describing topic: $(TOPIC)...$(NC)"
-	@docker exec -it sms_kafka kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic $(TOPIC)
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic $(TOPIC)
 
 kafka-produce: ## Send messages to a Kafka topic (usage: make kafka-produce TOPIC=topic_name)
 	@if [ -z "$(TOPIC)" ]; then \
@@ -190,7 +231,12 @@ kafka-produce: ## Send messages to a Kafka topic (usage: make kafka-produce TOPI
 	fi
 	@echo "$(YELLOW)Producing messages to topic: $(TOPIC)$(NC)"
 	@echo "$(BLUE)Type your messages (press Ctrl+C to exit):$(NC)"
-	@docker exec -it sms_kafka kafka-console-producer.sh --bootstrap-server localhost:9092 --topic $(TOPIC)
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec -it $$KAFKA_CONTAINER kafka-console-producer.sh --bootstrap-server localhost:9092 --topic $(TOPIC)
 
 kafka-consume: ## Consume messages from a Kafka topic (usage: make kafka-consume TOPIC=topic_name)
 	@if [ -z "$(TOPIC)" ]; then \
@@ -199,24 +245,49 @@ kafka-consume: ## Consume messages from a Kafka topic (usage: make kafka-consume
 	fi
 	@echo "$(YELLOW)Consuming messages from topic: $(TOPIC)$(NC)"
 	@echo "$(BLUE)Press Ctrl+C to exit$(NC)"
-	@docker exec -it sms_kafka kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic $(TOPIC) --from-beginning
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec -it $$KAFKA_CONTAINER kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic $(TOPIC) --from-beginning
 
 kafka-shell: ## Open Kafka container shell
 	@echo "$(BLUE)Opening Kafka container shell...$(NC)"
-	docker exec -it sms_kafka /bin/bash
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec -it $$KAFKA_CONTAINER /bin/bash
 
 ## Infrastructure Commands
 postgres-shell: ## Open PostgreSQL shell
 	@echo "$(BLUE)Opening PostgreSQL shell...$(NC)"
-	docker exec -it sms_postgres psql -U postgres -d sms_db
+	@POSTGRES_CONTAINER=$$(docker ps --filter "name=sms_stack_postgres" --format "{{.ID}}" | head -1); \
+	if [ -z "$$POSTGRES_CONTAINER" ]; then \
+		echo "$(RED)Error: PostgreSQL container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec -it $$POSTGRES_CONTAINER psql -U dev_user -d sms_db
 
 redis-shell: ## Open Redis shell
 	@echo "$(BLUE)Opening Redis shell...$(NC)"
-	docker exec -it sms_redis redis-cli
+	@REDIS_CONTAINER=$$(docker ps --filter "name=sms_stack_redis" --format "{{.ID}}" | head -1); \
+	if [ -z "$$REDIS_CONTAINER" ]; then \
+		echo "$(RED)Error: Redis container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec -it $$REDIS_CONTAINER redis-cli
 
 elasticsearch-shell: ## Open Elasticsearch shell
 	@echo "$(BLUE)Opening Elasticsearch container shell...$(NC)"
-	docker exec -it sms_elasticsearch /bin/bash
+	@ES_CONTAINER=$$(docker ps --filter "name=sms_stack_elasticsearch" --format "{{.ID}}" | head -1); \
+	if [ -z "$$ES_CONTAINER" ]; then \
+		echo "$(RED)Error: Elasticsearch container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec -it $$ES_CONTAINER /bin/bash
 
 ELASTIC_URL=http://localhost:9200
 
@@ -290,10 +361,20 @@ clear-snapshotidx: ## Clear all documents in snapshotidx
 	-d '{"query": {"match_all": {}}}'
 
 clear-snapshot-redis: ## Clear all keys snapshotKey:* in Redis
-	docker exec -i sms_redis redis-cli --scan --pattern "snapshotKey:*" | xargs -r docker exec -i sms_redis redis-cli del
+	@REDIS_CONTAINER=$$(docker ps --filter "name=sms_stack_redis" --format "{{.ID}}" | head -1); \
+	if [ -z "$$REDIS_CONTAINER" ]; then \
+		echo "$(RED)Error: Redis container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec -i $$REDIS_CONTAINER redis-cli --scan --pattern "snapshotKey:*" | xargs -r docker exec -i $$REDIS_CONTAINER redis-cli del
 
-clear-postgres-servers:
-	docker exec -i sms_postgres psql -U dev_user -d sms_db -c "TRUNCATE TABLE servers CASCADE;"
+clear-postgres-servers: ## Clear all servers from PostgreSQL
+	@POSTGRES_CONTAINER=$$(docker ps --filter "name=sms_stack_postgres" --format "{{.ID}}" | head -1); \
+	if [ -z "$$POSTGRES_CONTAINER" ]; then \
+		echo "$(RED)Error: PostgreSQL container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec -i $$POSTGRES_CONTAINER psql -U dev_user -d sms_db -c "TRUNCATE TABLE servers CASCADE;"
 
 clear-all-servers: clear-snapshotidx clear-snapshot-redis clear-postgres-servers
 
