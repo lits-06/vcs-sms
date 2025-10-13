@@ -21,7 +21,7 @@ func NewCacheRepository(client *redis.Client, cfg *config.Config) domain.CacheRe
 	}
 }
 
-func (r *redisRepository) GetAllServersSnapshot(ctx context.Context) (*[]domain.Server, error) {
+func (r *redisRepository) GetAllServersSnapshot(ctx context.Context) ([]domain.Server, error) {
 	var (
 		cursor  uint64
 		servers []domain.Server
@@ -56,12 +56,16 @@ func (r *redisRepository) GetAllServersSnapshot(ctx context.Context) (*[]domain.
 		}
 	}
 
-	return &servers, nil
+	return servers, nil
 }
 
-func (r *redisRepository) SetAllServersSnapshot(ctx context.Context, servers *[]domain.Server) error {
+func (r *redisRepository) SetAllServersSnapshot(ctx context.Context, servers []domain.Server) error {
+	if len(servers) == 0 {
+		return nil
+	}
+
 	pipe := r.client.Pipeline()
-	for _, server := range *servers {
+	for _, server := range servers {
 		sbytes, err := json.Marshal(server)
 		if err != nil {
 			return err

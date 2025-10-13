@@ -111,6 +111,63 @@ func (r *serverRepository) UpdateStatus(ctx context.Context, id string, status s
 	return nil
 }
 
+func (r *serverRepository) BulkUpdateStatus(ctx context.Context, updates []domain.ServerStatusUpdate) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.BulkUpdateStatus")
+	defer span.Finish()
+
+	if len(updates) == 0 {
+		return nil
+	}
+
+	// Use GORM's transaction for batch updates
+	tx := r.db.WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to begin transaction: %w", tx.Error))
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Batch updates in chunks for better performance
+	const chunkSize = 1000
+	for i := 0; i < len(updates); i += chunkSize {
+		end := i + chunkSize
+		if end > len(updates) {
+			end = len(updates)
+		}
+		chunk := updates[i:end]
+
+		// Build CASE statement for bulk update
+		query := "UPDATE servers SET status = CASE id "
+		var ids []string
+		var args []interface{}
+
+		for _, update := range chunk {
+			query += "WHEN ? THEN ? "
+			args = append(args, update.ServerID, update.Status)
+			ids = append(ids, update.ServerID)
+		}
+		query += "END WHERE id IN (?" + strings.Repeat(",?", len(ids)-1) + ")"
+
+		for _, id := range ids {
+			args = append(args, id)
+		}
+
+		if err := tx.Exec(query, args...).Error; err != nil {
+			tx.Rollback()
+			return tracing.TraceWithErr(span, fmt.Errorf("failed to bulk update server status: %w", err))
+		}
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to commit transaction: %w", err))
+	}
+
+	return nil
+}
+
 func (r *serverRepository) Delete(ctx context.Context, id string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.Delete")
 	defer span.Finish()

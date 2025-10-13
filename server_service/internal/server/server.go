@@ -61,7 +61,7 @@ func (s *server) Run() error {
 	defer serverProducer.Close()
 
 	serverRepo := repository.NewServerRepository(pgDB)
-	serverUsecase := usecase.NewServerUsecase(serverRepo, serverProducer)
+	serverUsecase := usecase.NewServerUsecase(serverRepo, serverProducer, s.log)
 
 	middleware := middleware.NewAuthMiddleware(s.cfg.JWT.SecretKey)
 	serverHandler := http.NewServerHandler(s.log, serverUsecase, middleware)

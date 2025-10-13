@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"sync"
 	"time"
 
 	"github.com/lits-06/vcs-sms/pkg/logger"
@@ -19,26 +18,12 @@ type Producer struct {
 	cfg          *config.Config
 	createWriter *kafka.Writer
 	deleteWriter *kafka.Writer
-
-	createBatch []kafka.Message
-	deleteBatch []kafka.Message
-	createMutex sync.Mutex
-	deleteMutex sync.Mutex
-
-	flushInterval time.Duration
-	maxBatchSize  int
-	done          chan struct{}
 }
 
 func NewProducer(log logger.Logger, cfg *config.Config) *Producer {
 	return &Producer{
-		log:           log,
-		cfg:           cfg,
-		createBatch:   make([]kafka.Message, 0, 100),
-		deleteBatch:   make([]kafka.Message, 0, 100),
-		flushInterval: 5 * time.Second,
-		maxBatchSize:  100,
-		done:          make(chan struct{}),
+		log: log,
+		cfg: cfg,
 	}
 }
 
@@ -68,7 +53,6 @@ func (p *Producer) Run() {
 }
 
 func (p *Producer) Close() {
-	close(p.done)
 	p.createWriter.Close()
 	p.deleteWriter.Close()
 }

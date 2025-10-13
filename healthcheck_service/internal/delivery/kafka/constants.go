@@ -3,11 +3,11 @@ package kafka
 import "time"
 
 const (
-	minBytes               = 10e3 // 10KB
-	maxBytes               = 10e6 // 10MB
-	maxWait                = 1 * time.Second
+	minBytes               = 10e3                   // 10KB
+	maxBytes               = 20e6                   // 20MB
+	maxWait                = 500 * time.Millisecond // Reduced for faster batch collection
 	readBatchTimeout       = 500 * time.Millisecond
-	queueCapacity          = 1000
+	queueCapacity          = 10000 // Increased to handle large batches
 	heartbeatInterval      = 3 * time.Second
 	commitInterval         = 0
 	partitionWatchInterval = 5 * time.Second

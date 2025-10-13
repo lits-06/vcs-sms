@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -25,7 +26,7 @@ func NewESRepository(client *elasticsearch.Client, cfg *config.Config) domain.Re
 	}
 }
 
-func (r *esRepository) GetAllServersSnapshot(ctx context.Context) (*[]domain.Server, error) {
+func (r *esRepository) GetAllServersSnapshot(ctx context.Context) ([]domain.Server, error) {
 	var servers []domain.Server
 
 	query := `{
@@ -81,7 +82,7 @@ func (r *esRepository) GetAllServersSnapshot(ctx context.Context) (*[]domain.Ser
 		servers = append(servers, server)
 	}
 
-	return &servers, nil
+	return servers, nil
 }
 
 func (r *esRepository) SaveServerSnapshot(ctx context.Context, server *domain.Server) error {
@@ -95,7 +96,7 @@ func (r *esRepository) SaveServerSnapshot(ctx context.Context, server *domain.Se
 		strings.NewReader(string(sbytes)),
 		r.client.Index.WithContext(ctx),
 		r.client.Index.WithDocumentID(server.ServerID),
-		r.client.Index.WithRefresh("true"),
+		r.client.Index.WithRefresh("false"), // Changed to false for better performance
 	)
 
 	if err != nil {
@@ -129,11 +130,120 @@ func (r *esRepository) IndexServerState(ctx context.Context, server *domain.Serv
 		r.recordIdx,
 		strings.NewReader(string(sbytes)),
 		r.client.Index.WithContext(ctx),
-		r.client.Index.WithRefresh("true"),
+		r.client.Index.WithRefresh("false"), // Changed to false for better performance
 	)
 
 	if err != nil {
 		return err
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return fmt.Errorf("res.IsError.Decode: %s", err)
+		} else {
+			return fmt.Errorf("res.IsError [%s] %s: %s",
+				res.Status(),
+				e["error"].(map[string]interface{})["type"],
+				e["error"].(map[string]interface{})["reason"],
+			)
+		}
+	}
+
+	return nil
+}
+
+func (r *esRepository) BulkIndexServerStates(ctx context.Context, servers []domain.Server) error {
+	if len(servers) == 0 {
+		return nil
+	}
+
+	var buf bytes.Buffer
+	for _, server := range servers {
+		meta := map[string]interface{}{
+			"index": map[string]interface{}{
+				"_index": r.recordIdx,
+			},
+		}
+		metaBytes, err := json.Marshal(meta)
+		if err != nil {
+			return err
+		}
+		buf.Write(metaBytes)
+		buf.WriteByte('\n')
+
+		docBytes, err := json.Marshal(server)
+		if err != nil {
+			return err
+		}
+		buf.Write(docBytes)
+		buf.WriteByte('\n')
+	}
+
+	res, err := r.client.Bulk(
+		bytes.NewReader(buf.Bytes()),
+		r.client.Bulk.WithContext(ctx),
+		r.client.Bulk.WithRefresh("false"),
+	)
+
+	if err != nil {
+		return fmt.Errorf("client.Bulk: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		var e map[string]interface{}
+		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
+			return fmt.Errorf("res.IsError.Decode: %s", err)
+		} else {
+			return fmt.Errorf("res.IsError [%s] %s: %s",
+				res.Status(),
+				e["error"].(map[string]interface{})["type"],
+				e["error"].(map[string]interface{})["reason"],
+			)
+		}
+	}
+
+	return nil
+}
+
+func (r *esRepository) BulkSaveServerSnapshots(ctx context.Context, servers []domain.Server) error {
+	if len(servers) == 0 {
+		return nil
+	}
+
+	var buf bytes.Buffer
+	for _, server := range servers {
+		meta := map[string]interface{}{
+			"index": map[string]interface{}{
+				"_index": r.snapshotIdx,
+				"_id":    server.ServerID,
+			},
+		}
+		metaBytes, err := json.Marshal(meta)
+		if err != nil {
+			return err
+		}
+		buf.Write(metaBytes)
+		buf.WriteByte('\n')
+
+		docBytes, err := json.Marshal(server)
+		if err != nil {
+			return err
+		}
+		buf.Write(docBytes)
+		buf.WriteByte('\n')
+	}
+
+	res, err := r.client.Bulk(
+		bytes.NewReader(buf.Bytes()),
+		r.client.Bulk.WithContext(ctx),
+		r.client.Bulk.WithRefresh("false"),
+	)
+
+	if err != nil {
+		return fmt.Errorf("client.Bulk: %w", err)
 	}
 	defer res.Body.Close()
 

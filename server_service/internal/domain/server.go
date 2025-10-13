@@ -16,6 +16,12 @@ func (Server) TableName() string {
 	return "servers"
 }
 
+// ServerStatusUpdate represents a status update for a server
+type ServerStatusUpdate struct {
+	ServerID string `json:"server_id"`
+	Status   string `json:"status"`
+}
+
 const (
 	StatusOnline  string = "ON"
 	StatusOffline string = "OFF"

@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"sync"
 	"time"
 
 	"github.com/lits-06/vcs-sms/healthcheck_service/config"
@@ -18,23 +17,12 @@ type Producer struct {
 	log    logger.Logger
 	cfg    *config.Config
 	writer *kafka.Writer
-
-	batch []kafka.Message
-	mu    sync.Mutex
-
-	flushInterval time.Duration
-	maxBatchSize  int
-	done          chan struct{}
 }
 
 func NewProducer(log logger.Logger, cfg *config.Config) *Producer {
 	return &Producer{
-		log:           log,
-		cfg:           cfg,
-		batch:         make([]kafka.Message, 0, 100),
-		flushInterval: 5 * time.Second,
-		maxBatchSize:  100,
-		done:          make(chan struct{}),
+		log: log,
+		cfg: cfg,
 	}
 }
 
@@ -51,8 +39,8 @@ func (p *Producer) getNewKafkaWriter(topic string) *kafka.Writer {
 		ErrorLogger:  kafka.LoggerFunc(p.log.Errorf),
 		Compression:  compress.Snappy,
 		Async:        true,
-		BatchSize:    100,
-		BatchTimeout: 100 * time.Millisecond,
+		BatchSize:    10000,
+		BatchTimeout: 500 * time.Millisecond,
 	}
 
 	return w
@@ -63,7 +51,6 @@ func (p *Producer) Run() {
 }
 
 func (p *Producer) Close() {
-	close(p.done)
 	p.writer.Close()
 }
 

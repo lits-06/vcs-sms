@@ -56,12 +56,12 @@ func (h *healthCheckUseCase) StopHealthCheckScheduler(ctx context.Context) {
 	h.ticker.Stop()
 }
 
-func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]domain.Server) {
+func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers []domain.Server) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var changedServers []domain.Server
 
-	for i, server := range *servers {
+	for i, server := range servers {
 		wg.Add(1)
 		go func(i int, server *domain.Server) {
 			defer wg.Done()
@@ -78,7 +78,7 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]
 					Status:    snapshot.Status,
 					Timestamp: time.Now(),
 				}
-				
+
 				// Collect changed servers in a thread-safe manner
 				mu.Lock()
 				changedServers = append(changedServers, state)
@@ -97,10 +97,10 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]
 	h.log.Debugf("Health check completed for %d servers", len(changedServers))
 }
 
-func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) (*[]domain.Server, error) {
+func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) ([]domain.Server, error) {
 	servers, err := h.cacheRepo.GetAllServersSnapshot(ctx)
-	if err == nil && len(*servers) > 0 {
-		h.log.Debugf("Retrieved %d servers from cache", len(*servers))
+	if err == nil && len(servers) > 0 {
+		h.log.Debugf("Retrieved %d servers from cache", len(servers))
 		return servers, nil
 	}
 
@@ -114,13 +114,13 @@ func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) (*[]doma
 		return nil, fmt.Errorf("repo.GetAllServersSnapshot: %w", err)
 	}
 
-	if len(*servers) > 0 {
+	if len(servers) > 0 {
 		if err = h.cacheRepo.SetAllServersSnapshot(ctx, servers); err != nil {
 			h.log.Warnf("cacheRepo.SetAllServersSnapshot: %v", err)
 		}
 	}
 
-	h.log.Debugf("Retrieved %d servers from DB", len(*servers))
+	h.log.Debugf("Retrieved %d servers from DB", len(servers))
 	return servers, nil
 }
 
@@ -190,5 +190,36 @@ func (h *healthCheckUseCase) DeleteServerSnapshot(ctx context.Context, serverID 
 		return err
 	}
 
+	return nil
+}
+
+func (h *healthCheckUseCase) BulkIndexServerStates(ctx context.Context, servers []domain.Server) error {
+	if len(servers) == 0 {
+		return nil
+	}
+
+	start := time.Now()
+	if err := h.repo.BulkIndexServerStates(ctx, servers); err != nil {
+		h.log.Errorf("repo.BulkIndexServerStates: %v", err)
+		return err
+	}
+	elapsed := time.Since(start)
+	h.log.Infof("Bulk indexed %d servers in %s", len(servers), elapsed)
+
+	start = time.Now()
+	if err := h.repo.BulkSaveServerSnapshots(ctx, servers); err != nil {
+		h.log.Errorf("repo.BulkSaveServerSnapshots: %v", err)
+		return err
+	}
+	elapsed = time.Since(start)
+	h.log.Infof("Bulk saved %d server snapshots in %s", len(servers), elapsed)
+
+	start = time.Now()
+	if err := h.cacheRepo.SetAllServersSnapshot(ctx, servers); err != nil {
+		h.log.Errorf("cacheRepo.SetAllServersSnapshot: %v", err)
+		return err
+	}
+	elapsed = time.Since(start)
+	h.log.Infof("Bulk saved %d server cache in %s", len(servers), elapsed)
 	return nil
 }

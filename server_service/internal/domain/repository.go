@@ -14,6 +14,7 @@ type Repository interface {
 	Update(ctx context.Context, id, name, ipv4 string) error
 	Delete(ctx context.Context, id string) error
 	UpdateStatus(ctx context.Context, id string, status string) error
+	BulkUpdateStatus(ctx context.Context, updates []ServerStatusUpdate) error
 
 	// Query operations
 	List(ctx context.Context, name, status, ipv4 string, from, to int, sort, order string) (*[]Server, int, error)

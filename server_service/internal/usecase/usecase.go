@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/server_service/internal/domain"
 	"github.com/opentracing/opentracing-go"
@@ -16,12 +17,15 @@ import (
 type serverUsecase struct {
 	serverRepo domain.Repository
 	publisher  domain.EventPublisher
+	log        logger.Logger
 }
 
-func NewServerUsecase(serverRepo domain.Repository, publisher domain.EventPublisher) domain.UseCase {
+func NewServerUsecase(serverRepo domain.Repository, publisher domain.EventPublisher, log logger.Logger) domain.UseCase {
+	log.WithName("Server Usecase")
 	return &serverUsecase{
 		serverRepo: serverRepo,
 		publisher:  publisher,
+		log:        log,
 	}
 }
 
@@ -212,7 +216,7 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
 		}
-		
+
 		servers = append(servers, server)
 	}
 
@@ -222,7 +226,7 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 		return nil, tracing.TraceWithErr(span, fmt.Errorf("serverRepo.CreateBatch: %w", err))
 	}
 	elapsed := time.Since(start)
-	fmt.Printf("Bulk insert took %s\n", elapsed)
+	uc.log.Info("Imported servers from Excel ", "count: ", len(servers), "elapsed: ", elapsed)
 
 	result.SuccessCount = len(servers)
 	for _, srv := range servers {
@@ -304,6 +308,30 @@ func (uc *serverUsecase) UpdateServerStatus(ctx context.Context, serverID string
 	err = uc.serverRepo.UpdateStatus(ctx, serverID, status)
 	if err != nil {
 		return tracing.TraceWithErr(span, fmt.Errorf("failed to update server status: %w", err))
+	}
+
+	return nil
+}
+
+func (uc *serverUsecase) BulkUpdateServerStatus(ctx context.Context, updates []domain.ServerStatusUpdate) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverUsecase.BulkUpdateServerStatus")
+	defer span.Finish()
+
+	if len(updates) == 0 {
+		return nil
+	}
+
+	// Validate all statuses
+	for _, update := range updates {
+		if !domain.IsStatusValid(update.Status) {
+			return tracing.TraceWithErr(span, fmt.Errorf("invalid server status for server %s: %s", update.ServerID, update.Status))
+		}
+	}
+
+	// Perform bulk update
+	err := uc.serverRepo.BulkUpdateStatus(ctx, updates)
+	if err != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to bulk update server status: %w", err))
 	}
 
 	return nil

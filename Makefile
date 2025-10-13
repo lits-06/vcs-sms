@@ -224,6 +224,15 @@ kafka-describe-topic: ## Describe a specific Kafka topic (usage: make kafka-desc
 	fi; \
 	docker exec $$KAFKA_CONTAINER kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic $(TOPIC)
 
+kafka-consumer-group: ## List all Kafka consumer groups
+	@echo "$(BLUE)Listing all Kafka consumer groups...$(NC)"
+	@KAFKA_CONTAINER=$$(docker ps --filter "name=sms_stack_kafka" --format "{{.ID}}" | head -1); \
+	if [ -z "$$KAFKA_CONTAINER" ]; then \
+		echo "$(RED)Error: Kafka container not found$(NC)"; \
+		exit 1; \
+	fi; \
+	docker exec $$KAFKA_CONTAINER kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --all-groups
+
 kafka-produce: ## Send messages to a Kafka topic (usage: make kafka-produce TOPIC=topic_name)
 	@if [ -z "$(TOPIC)" ]; then \
 		echo "$(RED)Error: Please specify TOPIC name. Example: make kafka-produce TOPIC=server-create$(NC)"; \
