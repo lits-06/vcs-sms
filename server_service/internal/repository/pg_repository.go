@@ -32,6 +32,16 @@ func (r *serverRepository) Create(ctx context.Context, srv *domain.Server) (*dom
 	return srv, nil
 }
 
+func (r *serverRepository) CreateBatch(ctx context.Context, servers []domain.Server) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.CreateBatch")
+	defer span.Finish()
+
+	if err := r.db.WithContext(ctx).Create(&servers).Error; err != nil {
+		return tracing.TraceWithErr(span, fmt.Errorf("failed to create servers batch: %w", err))
+	}
+	return nil
+}
+
 func (r *serverRepository) GetByID(ctx context.Context, id string) (*domain.Server, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "serverRepository.GetByID")
 	defer span.Finish()

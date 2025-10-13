@@ -8,6 +8,7 @@ import (
 type Repository interface {
 	// CRUD operations
 	Create(ctx context.Context, server *Server) (*Server, error)
+	CreateBatch(ctx context.Context, servers []Server) error
 	GetByID(ctx context.Context, id string) (*Server, error)
 	GetByName(ctx context.Context, name string) (*Server, error)
 	Update(ctx context.Context, id, name, ipv4 string) error

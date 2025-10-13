@@ -58,6 +58,8 @@ func (h *healthCheckUseCase) StopHealthCheckScheduler(ctx context.Context) {
 
 func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]domain.Server) {
 	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var changedServers []domain.Server
 
 	for i, server := range *servers {
 		wg.Add(1)
@@ -76,17 +78,23 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers *[]
 					Status:    snapshot.Status,
 					Timestamp: time.Now(),
 				}
-				err = h.publisher.PublishStateChange(ctx, &state)
-				if err != nil {
-					h.log.Errorf("PublishStateChange: %v", err)
-					return
-				}
+				
+				// Collect changed servers in a thread-safe manner
+				mu.Lock()
+				changedServers = append(changedServers, state)
+				mu.Unlock()
 			}
 		}(i, &server)
 	}
 
 	wg.Wait()
-	h.log.Debug("Health check completed for all servers")
+
+	err := h.publisher.PublishStateChange(ctx, changedServers)
+	if err != nil {
+		h.log.Errorf("PublishStateChange: %v", err)
+	}
+
+	h.log.Debugf("Health check completed for %d servers", len(changedServers))
 }
 
 func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) (*[]domain.Server, error) {

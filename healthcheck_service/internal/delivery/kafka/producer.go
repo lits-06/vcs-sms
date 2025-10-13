@@ -60,8 +60,6 @@ func (p *Producer) getNewKafkaWriter(topic string) *kafka.Writer {
 
 func (p *Producer) Run() {
 	p.writer = p.getNewKafkaWriter(updateTopic)
-
-	go p.batchLoop()
 }
 
 func (p *Producer) Close() {
@@ -69,69 +67,36 @@ func (p *Producer) Close() {
 	p.writer.Close()
 }
 
-func (p *Producer) PublishStateChange(ctx context.Context, server *domain.Server) error {
-	data, err := json.Marshal(server)
-	if err != nil {
-		p.log.Errorf("json.Marshal: %v", err)
-		return err
-	}
-
-	msg := kafka.Message{
-		Key:   []byte(server.ServerID),
-		Value: data,
-	}
-
-	p.mu.Lock()
-	p.batch = append(p.batch, msg)
-	flush := len(p.batch) >= p.maxBatchSize
-	p.mu.Unlock()
-
-	if flush {
-		p.flush(ctx)
-	}
-
-	return nil
-}
-
-func (p *Producer) batchLoop() {
-	ticker := time.NewTicker(p.flushInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			p.flush(context.Background())
-		case <-p.done:
-			p.flush(context.Background())
-			return
+func (p *Producer) PublishStateChange(ctx context.Context, server []domain.Server) error {
+	var msgs []kafka.Message
+	for _, server := range server {
+		data, err := json.Marshal(server)
+		if err != nil {
+			p.log.Errorf("Failed to marshal server data: %v", err)
+			continue
 		}
-	}
-}
 
-func (p *Producer) flush(ctx context.Context) error {
-	p.mu.Lock()
-	batch := p.batch
-	if len(batch) == 0 {
-		p.mu.Unlock()
-		return nil
+		msg := kafka.Message{
+			Key:   []byte(server.ServerID),
+			Value: data,
+		}
+		msgs = append(msgs, msg)
 	}
-	p.batch = make([]kafka.Message, 0, 100)
-	p.mu.Unlock()
 
 	start := time.Now()
-	err := p.writer.WriteMessages(ctx, batch...)
+	err := p.writer.WriteMessages(ctx, msgs...)
 	elapsed := time.Since(start)
 
 	if err != nil {
 		p.log.Errorf("Failed to state batch: %v", err)
 	} else {
 		var totalBytes int32 = 0
-		for _, msg := range batch {
+		for _, msg := range msgs {
 			totalBytes += utils.TotalSize(&msg)
 		}
 
-		p.log.Infof("Produced state batch: %d messages, %d bytes, took %s", len(batch), totalBytes, elapsed)
+		p.log.Infof("Produced state batch: %d messages, %d bytes, took %s", len(msgs), totalBytes, elapsed)
 	}
 
-	return err
+	return nil
 }

@@ -55,7 +55,7 @@ func (uc *serverUsecase) CreateServer(ctx context.Context, name, ipv4 string, po
 	}
 
 	// Publish event
-	err = uc.publisher.PublishServerCreate(ctx, createdServer)
+	err = uc.publisher.PublishServerCreate(ctx, []domain.Server{*createdServer})
 	if err != nil {
 		return nil, tracing.TraceWithErr(span, fmt.Errorf("publisher.PublishServerCreate: %w", err))
 	}
@@ -135,7 +135,7 @@ func (uc *serverUsecase) DeleteServer(ctx context.Context, serverID string) erro
 		return tracing.TraceWithErr(span, fmt.Errorf("serverRepo.Delete: %w", err))
 	}
 
-	err = uc.publisher.PublishServerDelete(ctx, serverID)
+	err = uc.publisher.PublishServerDelete(ctx, []string{serverID})
 	if err != nil {
 		return tracing.TraceWithErr(span, fmt.Errorf("publisher.PublishServerDelete: %w", err))
 	}
@@ -178,6 +178,9 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 		FailureServers: make([]string, 0),
 	}
 
+	start := time.Now()
+	var servers []domain.Server
+
 	// Skip header row and process data rows
 	for i, row := range rows[1:] {
 		if len(row) < 3 {
@@ -201,29 +204,35 @@ func (uc *serverUsecase) ImportServersFromExcel(ctx context.Context, file multip
 			continue
 		}
 
-		// Check if server with same name already exists
-		existName, err := uc.serverRepo.ExistsWithName(ctx, serverName)
-		if err != nil {
-			result.FailureCount++
-			result.FailureServers = append(result.FailureServers, fmt.Sprintf("row:%d name:%s - failed to check name existence", i, serverName))
-			continue
+		server := domain.Server{
+			Name:      serverName,
+			IPv4:      serverIPv4,
+			Port:      port,
+			Status:    domain.StatusOffline,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		}
-		if existName {
-			result.FailureCount++
-			result.FailureServers = append(result.FailureServers, fmt.Sprintf("row:%d name:%s - name already exists", i, serverName))
-			continue
-		}
+		
+		servers = append(servers, server)
+	}
 
-		// Create server
-		_, err = uc.CreateServer(ctx, serverName, serverIPv4, port)
-		if err != nil {
-			result.FailureCount++
-			result.FailureServers = append(result.FailureServers, fmt.Sprintf("row:%d name:%s - %v", i, serverName, err))
-			continue
-		}
+	// Bulk insert servers
+	err = uc.serverRepo.CreateBatch(ctx, servers)
+	if err != nil {
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("serverRepo.CreateBatch: %w", err))
+	}
+	elapsed := time.Since(start)
+	fmt.Printf("Bulk insert took %s\n", elapsed)
 
-		result.SuccessCount++
-		result.SuccessServers = append(result.SuccessServers, fmt.Sprintf("row:%d name:%s", i, serverName))
+	result.SuccessCount = len(servers)
+	for _, srv := range servers {
+		result.SuccessServers = append(result.SuccessServers, srv.Name)
+	}
+
+	// Publish event
+	err = uc.publisher.PublishServerCreate(ctx, servers)
+	if err != nil {
+		return nil, tracing.TraceWithErr(span, fmt.Errorf("publisher.PublishServerCreate: %w", err))
 	}
 
 	return result, nil
