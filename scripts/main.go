@@ -17,6 +17,7 @@ const (
 	startPort = 20000
 	endPort   = 29999
 	outFile   = "fake_servers.xlsx"
+	onServers = 8000
 )
 
 func main() {
@@ -50,33 +51,35 @@ func main() {
 		f.SetCellValue(sheet, "C"+strconv.Itoa(row), p)
 		row++
 
-		go func(port int) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
+		if p-startPort < onServers {
+			go func(port int) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
 
-			addr := fmt.Sprintf(":%d", port)
-			// try to listen first to detect failure early
-			ln, err := net.Listen("tcp", addr)
-			if err != nil {
-				log.Printf("[ERROR] %s - listen %s failed: %v", name, addr, err)
-				return
-			}
-
-			mux := http.NewServeMux()
-			mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprintln(w, "OK")
-			})
-			server := &http.Server{
-				Handler: mux,
-			}
-
-			go func() {
-				if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
-					log.Printf("[ERROR] %s - serve %s failed: %v", name, addr, err)
+				addr := fmt.Sprintf(":%d", port)
+				// try to listen first to detect failure early
+				ln, err := net.Listen("tcp", addr)
+				if err != nil {
+					log.Printf("[ERROR] %s - listen %s failed: %v", name, addr, err)
+					return
 				}
-			}()
-		}(p)
+
+				mux := http.NewServeMux()
+				mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+					fmt.Fprintln(w, "OK")
+				})
+				server := &http.Server{
+					Handler: mux,
+				}
+
+				go func() {
+					if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
+						log.Printf("[ERROR] %s - serve %s failed: %v", name, addr, err)
+					}
+				}()
+			}(p)
+		}
 	}
 
 	// Xóa file cũ nếu tồn tại

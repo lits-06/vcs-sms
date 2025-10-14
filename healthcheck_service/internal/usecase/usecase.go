@@ -65,11 +65,7 @@ func (h *healthCheckUseCase) CheckServersHealth(ctx context.Context, servers []d
 		wg.Add(1)
 		go func(i int, server *domain.Server) {
 			defer wg.Done()
-			snapshot, err := h.checkServerHealth(server)
-			if err != nil {
-				h.log.Errorf("checkServerHealth: %v", err)
-				return
-			}
+			snapshot, _ := h.checkServerHealth(server)
 
 			if snapshot.Status != server.Status {
 				state := domain.Server{
@@ -126,11 +122,8 @@ func (h *healthCheckUseCase) getAllServersSnapshot(ctx context.Context) ([]domai
 
 func (h *healthCheckUseCase) checkServerHealth(server *domain.Server) (*domain.Server, error) {
 	addr := fmt.Sprintf("http://host.docker.internal:%d/health", server.Port)
-	start := time.Now()
 	resp, err := http.Get(addr)
-	responseTime := time.Since(start)
 	if err != nil {
-		h.log.Debugf("Failed to ping id:%s port:%d (took %v): %v", server.ServerID, server.Port, responseTime, err)
 		return &domain.Server{
 			ServerID: server.ServerID,
 			Port:     server.Port,

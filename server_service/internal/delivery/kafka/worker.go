@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 const (
 	retryAttempts = 1
 	retryDelay    = 1 * time.Second
-	batchSize     = 1000
+	batchSize     = 2000
 	batchTimeout  = 100 * time.Millisecond
 )
 
@@ -113,6 +114,19 @@ func (cg *ConsumerGroup) processBatch(
 		return
 	}
 
-	cg.log.Infof("Worker %d: successfully processed batch of %d server updates in %s",
-		workerID, len(batch), time.Since(start))
+	partition := make(map[int]int)
+	for _, msg := range messages {
+		partition[msg.Partition]++
+	}
+
+	var partitionInfo string
+	for p, count := range partition {
+		if partitionInfo != "" {
+			partitionInfo += ", "
+		}
+		partitionInfo += fmt.Sprintf("partition%d:%d", p, count)
+	}
+
+	cg.log.Infof("Worker %d: successfully processed batch of %d server updates in %s [%s]",
+		workerID, len(batch), time.Since(start), partitionInfo)
 }

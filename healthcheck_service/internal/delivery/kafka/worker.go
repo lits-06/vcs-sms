@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -15,7 +16,7 @@ import (
 const (
 	retryAttempts = 1
 	retryDelay    = 1 * time.Second
-	batchSize     = 1000
+	batchSize     = 2000
 	batchTimeout  = 1 * time.Second
 )
 
@@ -129,8 +130,22 @@ func (cg *ConsumerGroup) processBatchIndex(
 	}
 
 	elapsed := time.Since(start)
-	cg.log.Infof("Worker %d: Successfully processed batch - messages: %d, bytes: %d, duration: %s, topic: %s, group: %s",
-		workerID, len(batch), totalBytes, elapsed, r.Config().Topic, r.Config().GroupID)
+
+	partition := make(map[int]int)
+	for _, msg := range messages {
+		partition[msg.Partition]++
+	}
+
+	var partitionInfo string
+	for p, count := range partition {
+		if partitionInfo != "" {
+			partitionInfo += ", "
+		}
+		partitionInfo += fmt.Sprintf("partition%d:%d", p, count)
+	}
+
+	cg.log.Infof("Worker %d: Successfully processed batch - messages: %d, bytes: %d, duration: %s, topic: %s, group: %s [%s]",
+		workerID, len(batch), totalBytes, elapsed, r.Config().Topic, r.Config().GroupID, partitionInfo)
 }
 
 func (cg *ConsumerGroup) deleteWorker(
