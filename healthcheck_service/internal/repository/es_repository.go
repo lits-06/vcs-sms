@@ -18,6 +18,16 @@ type esRepository struct {
 	recordIdx   string
 }
 
+// Helper function to safely format Elasticsearch error responses
+func formatESError(status string, e map[string]interface{}) error {
+	if errorMap, ok := e["error"].(map[string]interface{}); ok {
+		errorType, _ := errorMap["type"].(string)
+		errorReason, _ := errorMap["reason"].(string)
+		return fmt.Errorf("elasticsearch error [%s] type: %s, reason: %s", status, errorType, errorReason)
+	}
+	return fmt.Errorf("elasticsearch error [%s]: %v", status, e)
+}
+
 func NewESRepository(client *elasticsearch.Client, cfg *config.Config) domain.Repository {
 	return &esRepository{
 		client:      client,
@@ -52,13 +62,8 @@ func (r *esRepository) GetAllServersSnapshot(ctx context.Context) ([]domain.Serv
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
 			return nil, fmt.Errorf("res.IsError.Decode: %s", err)
-		} else {
-			return nil, fmt.Errorf("res.IsError [%s] %s: %s",
-				res.Status(),
-				e["error"].(map[string]interface{})["type"],
-				e["error"].(map[string]interface{})["reason"],
-			)
 		}
+		return nil, formatESError(res.Status(), e)
 	}
 
 	var rBody map[string]interface{}
@@ -108,13 +113,8 @@ func (r *esRepository) SaveServerSnapshot(ctx context.Context, server *domain.Se
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
 			return fmt.Errorf("res.IsError.Decode: %s", err)
-		} else {
-			return fmt.Errorf("res.IsError [%s] %s: %s",
-				res.Status(),
-				e["error"].(map[string]interface{})["type"],
-				e["error"].(map[string]interface{})["reason"],
-			)
 		}
+		return formatESError(res.Status(), e)
 	}
 
 	return nil
@@ -142,13 +142,8 @@ func (r *esRepository) IndexServerState(ctx context.Context, server *domain.Serv
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
 			return fmt.Errorf("res.IsError.Decode: %s", err)
-		} else {
-			return fmt.Errorf("res.IsError [%s] %s: %s",
-				res.Status(),
-				e["error"].(map[string]interface{})["type"],
-				e["error"].(map[string]interface{})["reason"],
-			)
 		}
+		return formatESError(res.Status(), e)
 	}
 
 	return nil
@@ -196,13 +191,8 @@ func (r *esRepository) BulkIndexServerStates(ctx context.Context, servers []doma
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
 			return fmt.Errorf("res.IsError.Decode: %s", err)
-		} else {
-			return fmt.Errorf("res.IsError [%s] %s: %s",
-				res.Status(),
-				e["error"].(map[string]interface{})["type"],
-				e["error"].(map[string]interface{})["reason"],
-			)
 		}
+		return formatESError(res.Status(), e)
 	}
 
 	return nil
@@ -251,13 +241,8 @@ func (r *esRepository) BulkSaveServerSnapshots(ctx context.Context, servers []do
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
 			return fmt.Errorf("res.IsError.Decode: %s", err)
-		} else {
-			return fmt.Errorf("res.IsError [%s] %s: %s",
-				res.Status(),
-				e["error"].(map[string]interface{})["type"],
-				e["error"].(map[string]interface{})["reason"],
-			)
 		}
+		return formatESError(res.Status(), e)
 	}
 
 	return nil
@@ -280,13 +265,8 @@ func (r *esRepository) DeleteServerSnapshot(ctx context.Context, serverID string
 		var e map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&e); err != nil {
 			return fmt.Errorf("res.IsError.Decode: %s", err)
-		} else {
-			return fmt.Errorf("res.IsError [%s] %s: %s",
-				res.Status(),
-				e["error"].(map[string]interface{})["type"],
-				e["error"].(map[string]interface{})["reason"],
-			)
 		}
+		return formatESError(res.Status(), e)
 	}
 
 	return nil

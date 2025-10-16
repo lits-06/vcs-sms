@@ -48,6 +48,7 @@ func (p *Producer) getNewKafkaWriter(topic string) *kafka.Writer {
 }
 
 func (p *Producer) Run() {
+	p.log.Info("Producer in server service started")
 	p.createWriter = p.getNewKafkaWriter(createTopic)
 	p.deleteWriter = p.getNewKafkaWriter(deleteTopic)
 }
@@ -106,7 +107,7 @@ func (p *Producer) PublishServerDelete(ctx context.Context, serverID []string) e
 		for _, msg := range msgs {
 			totalBytes += utils.TotalSize(&msg)
 		}
-		p.log.Infof("Produced create batch: %d messages, %d bytes, took %s", len(msgs), totalBytes, elapsed)
+		p.log.Infof("Produced delete batch: %d messages, %d bytes, took %s", len(msgs), totalBytes, elapsed)
 	}
 
 	return nil

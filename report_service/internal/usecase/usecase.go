@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/lits-06/vcs-sms/pkg/logger"
 	"github.com/lits-06/vcs-sms/pkg/tracing"
 	"github.com/lits-06/vcs-sms/report_service/config"
 	"github.com/lits-06/vcs-sms/report_service/internal/domain"
@@ -21,20 +22,24 @@ import (
 type reportUseCase struct {
 	repo domain.Repository
 	cfg  *config.Config
+	log  logger.Logger
 }
 
-func NewReportUseCase(repo domain.Repository, cfg *config.Config) domain.UseCase {
-	return &reportUseCase{repo: repo, cfg: cfg}
+func NewReportUseCase(repo domain.Repository, cfg *config.Config, log logger.Logger) domain.UseCase {
+	return &reportUseCase{repo: repo, cfg: cfg, log: log}
 }
 
 func (uc *reportUseCase) ReportStats(ctx context.Context, email string, startDate, endDate time.Time) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "reportUseCase.ReportStats")
 	defer span.Finish()
 
+	start := time.Now()
 	stats, err := uc.repo.GetUptimeStats(ctx, startDate, endDate)
 	if err != nil {
 		return tracing.TraceWithErr(span, fmt.Errorf("failed to get uptime stats: %w", err))
 	}
+	elapsed := time.Since(start)
+	uc.log.Infof("Fetched uptime stats for %d servers in %s", stats.TotalServers, elapsed)
 
 	return uc.sendUptimeReport(ctx, email, stats)
 }
@@ -43,7 +48,10 @@ func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, sta
 	span, ctx := opentracing.StartSpanFromContext(ctx, "reportUseCase.sendUptimeReport")
 	defer span.Finish()
 
+	start := time.Now()
 	htmlBody, err := uc.generateUptimeReportHTML(ctx, stats)
+	elapsed := time.Since(start)
+	uc.log.Infof("Generated uptime report HTML in %s", elapsed)
 
 	if err != nil {
 		return tracing.TraceWithErr(span, err)
@@ -64,7 +72,10 @@ func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, sta
 	m.SetBody("text/html", htmlBody)
 
 	if stats.TotalServers > 0 {
+		start := time.Now()
 		excelBytes, err := uc.generateUptimeExcel(ctx, stats.ServerDetails)
+		elapsed := time.Since(start)
+		uc.log.Infof("Generated uptime report Excel in %s", elapsed)
 		if err != nil {
 			return tracing.TraceWithErr(span, fmt.Errorf("failed to generate excel report: %w", err))
 		}
@@ -75,10 +86,13 @@ func (uc *reportUseCase) sendUptimeReport(ctx context.Context, email string, sta
 		}))
 	}
 
+	start = time.Now()
 	d := gomail.NewDialer(uc.cfg.Smtp.Host, uc.cfg.Smtp.Port, uc.cfg.Smtp.Username, uc.cfg.Smtp.Password)
 	if err := d.DialAndSend(m); err != nil {
 		return tracing.TraceWithErr(span, fmt.Errorf("failed to send email: %w", err))
 	}
+	elapsed = time.Since(start)
+	uc.log.Infof("Sent uptime report email to %v in %s", emails, elapsed)
 
 	return nil
 }

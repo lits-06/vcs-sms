@@ -21,7 +21,6 @@ type serverUsecase struct {
 }
 
 func NewServerUsecase(serverRepo domain.Repository, publisher domain.EventPublisher, log logger.Logger) domain.UseCase {
-	log.WithName("Server Usecase")
 	return &serverUsecase{
 		serverRepo: serverRepo,
 		publisher:  publisher,

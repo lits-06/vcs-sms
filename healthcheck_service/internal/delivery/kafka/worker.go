@@ -176,11 +176,7 @@ func (cg *ConsumerGroup) deleteWorker(
 			string(m.Value),
 		)
 
-		var serverID string
-		if err := json.Unmarshal(m.Value, &serverID); err != nil {
-			cg.log.Errorf("json.Unmarshal: %v", err)
-			continue
-		}
+		serverID := string(m.Value)
 
 		if err := retry.Do(func() error {
 			err := cg.healthCheckUC.DeleteServerSnapshot(ctx, serverID)

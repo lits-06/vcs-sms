@@ -62,7 +62,7 @@ func (s *server) Run() error {
 	}
 
 	recordRepo := repository.NewRecordRepository(esClient, s.cfg)
-	reportUsecase := usecase.NewReportUseCase(recordRepo, s.cfg)
+	reportUsecase := usecase.NewReportUseCase(recordRepo, s.cfg, s.log)
 
 	middleware := middleware.NewAuthMiddleware(s.cfg.JWT.SecretKey)
 	reportHandler := http.NewReportHandler(s.log, reportUsecase, middleware)
