@@ -631,8 +631,8 @@ func (r *recordRepository) getLastStatusBatch(ctx context.Context, servers map[s
 		"aggs": map[string]interface{}{
 			"servers": map[string]interface{}{
 				"terms": map[string]interface{}{
-					"field": "server_id.keyword", // Use keyword field for exact match
-					"size":  len(servers),        // Get all servers
+					"field": "server_id",  // Use server_id field directly (not .keyword)
+					"size":  len(servers), // Get all servers
 				},
 				"aggs": map[string]interface{}{
 					"last_status": map[string]interface{}{
@@ -785,7 +785,9 @@ func (r *recordRepository) calculateUptimeSeconds(events []domain.Server, startD
 
 	for _, event := range events {
 		if event.Status == "ON" {
-			lastOnlineTime = &event.Timestamp
+			if lastOnlineTime == nil {
+				lastOnlineTime = &event.Timestamp
+			}
 		} else if event.Status == "OFF" && lastOnlineTime != nil {
 			onlineStart := *lastOnlineTime
 			offlineTime := event.Timestamp
